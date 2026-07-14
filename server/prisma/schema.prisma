@@ -1,0 +1,443 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// SYNCED FROM PERFORMX (cache, not source of truth)
+// ============================================
+
+model departments {
+  id                 String   @id @db.Uuid        // same UUID as PerformX department.id
+  name               String   @unique @db.VarChar(100)
+  is_hiring_enabled  Boolean  @default(false)
+  synced_at          DateTime @default(now()) @db.Timestamptz(6)
+  applications       applications[]
+  interview_slots    interview_slots[]
+  hiring_opportunities hiring_opportunities[]
+
+  @@index([is_hiring_enabled], map: "idx_departments_hiring")
+}
+
+model hr_employees {
+  id                  String   @id @db.Uuid        // same UUID as PerformX user.id
+  full_name           String   @db.VarChar(255)
+  email               String   @db.VarChar(255)
+  department_id       String?  @db.Uuid
+  performx_role       String   @db.VarChar(50)     // HOD, MD, EMPLOYEE etc (raw from PerformX)
+  is_active           Boolean  @default(true)
+  synced_at           DateTime @default(now()) @db.Timestamptz(6)
+  interview_slots     interview_slots[]
+  slot_assignments    slot_assignments[]
+  applications        applications[]        @relation("assigned_hr")
+  interview_feedback  interview_feedback[]
+  hr_notes            hr_notes[]
+  status_history      status_history[]      @relation("changed_by_hr")
+  opportunities_managing hiring_opportunities[] @relation("hiring_manager")
+  opportunities_reporting hiring_opportunities[] @relation("reporting_manager")
+
+  @@index([department_id])
+  @@index([performx_role])
+}
+
+model hr_role_permissions {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  performx_role  String @db.VarChar(50)
+  permission     permission_enum
+
+  @@unique([performx_role, permission])
+  @@index([performx_role])
+}
+
+// ============================================
+// OPPORTUNITIES DOMAIN (NEW)
+// ============================================
+
+model hiring_opportunities {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  
+  // Internal Information (Visible only to HR)
+  internal_position     String   @db.VarChar(255)
+  department_id         String   @db.Uuid
+  number_of_openings    Int      @db.SmallInt @default(1)
+  hiring_priority       priority_enum @default(MEDIUM)
+  hiring_type           hiring_type_enum @default(FULL_TIME)
+  confidentiality_level confidentiality_enum @default(STANDARD)
+  hiring_manager_id     String?  @db.Uuid
+  reporting_manager_id  String?  @db.Uuid
+  internal_notes        String?  @db.Text
+
+  // Public Information (Visible to candidates)
+  public_title          String   @db.VarChar(255)
+  career_level          career_level_enum @default(MID_LEVEL)
+  work_mode             work_mode_enum @default(ON_SITE)
+  location              String   @db.VarChar(255)
+  min_experience_years  Int      @db.SmallInt @default(0)
+  max_experience_years  Int?     @db.SmallInt
+  educational_qualification String? @db.VarChar(255)
+  min_salary            Decimal? @db.Decimal(12, 2)
+  max_salary            Decimal? @db.Decimal(12, 2)
+  application_deadline  DateTime? @db.Date
+
+  // Description
+  about                 String?  @db.Text
+  responsibilities      String?  @db.Text
+  benefits              String?  @db.Text
+  career_growth         String?  @db.Text
+
+  // Candidate Requirements
+  preferred_industry    String?  @db.VarChar(255)
+  preferred_languages   String[] 
+  certifications        String[]
+  age_limit             Int?     @db.SmallInt
+
+  // Documents Required
+  resume_required       Boolean  @default(true)
+  employment_proof_required Boolean @default(false)
+
+  // Interview Configuration
+  interview_rounds      Int      @db.SmallInt @default(1)
+  interview_location    String?  @db.VarChar(255)
+  meeting_link          String?  @db.VarChar(500)
+
+  // Publication
+  status                opportunity_status_enum @default(DRAFT)
+  visibility            visibility_enum @default(CAREER_PORTAL)
+
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @db.Timestamptz(6)
+  deleted_at            DateTime? @db.Timestamptz(6)
+
+  // Relations
+  department            departments @relation(fields: [department_id], references: [id], onDelete: NoAction)
+  hiring_manager        hr_employees? @relation("hiring_manager", fields: [hiring_manager_id], references: [id], onDelete: SetNull)
+  reporting_manager     hr_employees? @relation("reporting_manager", fields: [reporting_manager_id], references: [id], onDelete: SetNull)
+  applications          applications[]
+  opportunity_skills    opportunity_skills[]
+
+  @@index([department_id, status, deleted_at])
+  @@index([visibility, status])
+}
+
+model skills {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String   @unique @db.VarChar(100)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  opportunities opportunity_skills[]
+}
+
+model opportunity_skills {
+  opportunity_id String @db.Uuid
+  skill_id       String @db.Uuid
+  is_preferred   Boolean @default(false)
+  
+  opportunity    hiring_opportunities @relation(fields: [opportunity_id], references: [id], onDelete: Cascade)
+  skill          skills               @relation(fields: [skill_id], references: [id], onDelete: Cascade)
+
+  @@id([opportunity_id, skill_id])
+  @@index([skill_id])
+}
+
+// ============================================
+// CANDIDATE DOMAIN
+// ============================================
+
+model candidates {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  full_name         String   @db.VarChar(255)
+  email             String   @db.VarChar(255)
+  mobile_number     String   @db.VarChar(20)
+  whatsapp_number   String?  @db.VarChar(20)
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+  deleted_at        DateTime? @db.Timestamptz(6)
+  applications      applications[]
+
+  @@index([email], map: "idx_candidates_email")
+  @@index([mobile_number], map: "idx_candidates_mobile")
+  @@index([deleted_at], map: "idx_candidates_deleted")
+}
+
+model applications {
+  id                    String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_code      String              @unique @db.VarChar(20)   // RC-2026-00152
+  candidate_id          String              @db.Uuid
+  department_id         String              @db.Uuid
+  hiring_opportunity_id String?             @db.Uuid // Nullable for backward compatibility
+  self_description      String
+  status                application_status_enum @default(NEW)
+  assigned_hr_id        String?             @db.Uuid
+  rejection_reason      String?
+  created_at            DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime            @default(now()) @db.Timestamptz(6)
+  deleted_at            DateTime?           @db.Timestamptz(6)
+
+  candidate             candidates          @relation(fields: [candidate_id], references: [id], onDelete: Cascade)
+  department            departments         @relation(fields: [department_id], references: [id], onDelete: NoAction)
+  hiring_opportunity    hiring_opportunities? @relation(fields: [hiring_opportunity_id], references: [id], onDelete: SetNull)
+  assigned_hr           hr_employees?       @relation("assigned_hr", fields: [assigned_hr_id], references: [id], onDelete: NoAction)
+  files                 candidate_files[]
+  slot_assignment       slot_assignments?
+  interview_feedback    interview_feedback[]
+  hr_notes              hr_notes[]
+  status_history        status_history[]
+  email_logs            email_logs[]
+  notification_logs     notification_logs[]
+
+  @@index([status, deleted_at, created_at], map: "idx_applications_status_deleted_created")
+  @@index([department_id, status, deleted_at], map: "idx_applications_dept_status_deleted")
+  @@index([hiring_opportunity_id, status, deleted_at], map: "idx_applications_opp_status_deleted")
+  @@index([assigned_hr_id, status], map: "idx_applications_hr_status")
+  @@index([candidate_id])
+}
+
+model candidate_files {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id String            @db.Uuid
+  file_type      candidate_file_type_enum
+  file_name      String            @db.VarChar(255)
+  storage_path   String            @db.VarChar(500)   // Supabase path, career-resumes / career-org-proofs
+  file_size_kb   Int?
+  mime_type      String?           @db.VarChar(100)
+  created_at     DateTime          @default(now()) @db.Timestamptz(6)
+
+  application    applications      @relation(fields: [application_id], references: [id], onDelete: Cascade)
+
+  @@index([application_id, file_type], map: "idx_files_application_type")
+}
+
+// ============================================
+// INTERVIEW SCHEDULING
+// ============================================
+
+model interview_slots {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hr_id             String            @db.Uuid
+  department_id     String?           @db.Uuid           // null = any dept
+  slot_date         DateTime          @db.Date
+  slot_time         DateTime          @db.Time
+  is_booked         Boolean           @default(false)
+  is_recurring      Boolean           @default(false)     // weekly repeat template
+  created_at        DateTime          @default(now()) @db.Timestamptz(6)
+
+  hr                hr_employees      @relation(fields: [hr_id], references: [id], onDelete: Cascade)
+  department        departments?      @relation(fields: [department_id], references: [id], onDelete: NoAction)
+  slot_assignment   slot_assignments?
+
+  @@unique([hr_id, slot_date, slot_time], map: "uq_hr_slot")
+  @@index([slot_date, slot_time, is_booked], map: "idx_slots_date_time_booked")
+  @@index([hr_id, slot_date])
+}
+
+model slot_assignments {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id  String           @unique @db.Uuid
+  slot_id         String           @unique @db.Uuid
+  assigned_hr_id  String           @db.Uuid
+  assigned_at     DateTime         @default(now()) @db.Timestamptz(6)
+
+  application     applications     @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  slot            interview_slots  @relation(fields: [slot_id], references: [id], onDelete: Cascade)
+  assigned_hr     hr_employees     @relation(fields: [assigned_hr_id], references: [id], onDelete: NoAction)
+
+  @@index([assigned_hr_id])
+}
+
+model interview_feedback {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id  String        @db.Uuid
+  hr_id           String        @db.Uuid
+  rating          Int           @db.SmallInt        // 1-5
+  notes           String?
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+
+  application     applications  @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  hr              hr_employees  @relation(fields: [hr_id], references: [id], onDelete: NoAction)
+
+  @@index([application_id])
+}
+
+model hr_notes {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id  String        @db.Uuid
+  hr_id           String        @db.Uuid
+  note            String
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+
+  application     applications  @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  hr              hr_employees  @relation(fields: [hr_id], references: [id], onDelete: NoAction)
+
+  @@index([application_id, created_at], map: "idx_hr_notes_app_created")
+}
+
+model status_history {
+  id              String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id  String                    @db.Uuid
+  from_status     application_status_enum?
+  to_status       application_status_enum
+  changed_by_id   String?                   @db.Uuid
+  reason          String?
+  created_at      DateTime                  @default(now()) @db.Timestamptz(6)
+
+  application     applications              @relation(fields: [application_id], references: [id], onDelete: Cascade)
+  changed_by      hr_employees?             @relation("changed_by_hr", fields: [changed_by_id], references: [id], onDelete: NoAction)
+
+  @@index([application_id, created_at], map: "idx_status_history_app_created")
+}
+
+// ============================================
+// COMMUNICATION LOGS
+// ============================================
+
+model email_logs {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id  String?        @db.Uuid
+  recipient       String         @db.VarChar(255)
+  template        String         @db.VarChar(100)
+  status          log_status_enum @default(QUEUED)
+  error_message   String?
+  sent_at         DateTime?      @db.Timestamptz(6)
+  created_at      DateTime       @default(now()) @db.Timestamptz(6)
+
+  application     applications?  @relation(fields: [application_id], references: [id], onDelete: SetNull)
+
+  @@index([status, created_at], map: "idx_email_logs_status_created")
+  @@index([application_id])
+}
+
+model notification_logs {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  application_id  String?        @db.Uuid
+  recipient_hr_id String?        @db.Uuid
+  channel         notification_channel_enum @default(IN_APP)
+  message         String
+  status          log_status_enum @default(QUEUED)
+  read_at         DateTime?      @db.Timestamptz(6)
+  created_at      DateTime       @default(now()) @db.Timestamptz(6)
+
+  application     applications?  @relation(fields: [application_id], references: [id], onDelete: SetNull)
+
+  @@index([status, created_at])
+  @@index([recipient_hr_id])
+  @@index([recipient_hr_id, read_at, created_at], map: "idx_notifications_recipient_read_created")
+}
+
+// ============================================
+// AUDIT (mirrors PerformX audit_logs pattern)
+// ============================================
+
+model audit_logs {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  actor_id    String?   @db.Uuid    // hr_employees.id, null = system/candidate action
+  action      String    @db.VarChar(255)
+  entity      String    @db.VarChar(100)
+  entity_id   String    @db.Uuid
+  old_value   String?
+  new_value   String?
+  ip_address  String?   @db.VarChar(100)
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([entity, entity_id], map: "idx_audit_entity")
+  @@index([actor_id], map: "idx_audit_actor")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum priority_enum {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum hiring_type_enum {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  FREELANCE
+}
+
+enum confidentiality_enum {
+  STANDARD
+  HIGH
+  STRICTLY_CONFIDENTIAL
+}
+
+enum career_level_enum {
+  ENTRY_LEVEL
+  JUNIOR
+  MID_LEVEL
+  SENIOR
+  LEAD
+  MANAGER
+  DIRECTOR
+  EXECUTIVE
+}
+
+enum work_mode_enum {
+  ON_SITE
+  HYBRID
+  REMOTE
+}
+
+enum opportunity_status_enum {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+enum visibility_enum {
+  INTERNAL
+  CAREER_PORTAL
+  REFERRAL
+  THIRD_PARTY
+}
+
+enum application_status_enum {
+  NEW
+  SLOT_BOOKED
+  INTERVIEWED
+  SHORTLISTED
+  SELECTED
+  OFFER_RELEASED
+  JOINED
+  REJECTED
+  WITHDRAWN
+}
+
+enum candidate_file_type_enum {
+  RESUME
+  ORG_PROOF
+  CERTIFICATE
+  OFFER_LETTER
+  JOINING_LETTER
+  OTHER
+}
+
+enum permission_enum {
+  CAREER_VIEW
+  CAREER_EDIT
+  CAREER_EXPORT
+  CAREER_ADMIN
+  CAREER_REPORTS
+  CAREER_INTERVIEW
+}
+
+enum log_status_enum {
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum notification_channel_enum {
+  IN_APP
+  EMAIL
+  WHATSAPP
+}

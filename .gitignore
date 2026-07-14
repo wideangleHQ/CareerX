@@ -1,0 +1,39 @@
+# Dependencies
+**/node_modules/
+
+# Next.js
+**/.next/
+**/out/
+
+# NestJS
+**/dist/
+
+# Build
+**/build/
+
+# Environment
+**/.env
+**/.env.local
+**/.env.*
+
+# Logs
+**/*.log
+
+# Cache
+**/.turbo/
+**/.cache/
+**/.vercel/
+
+# Coverage
+**/coverage/
+
+# TypeScript
+**/*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
