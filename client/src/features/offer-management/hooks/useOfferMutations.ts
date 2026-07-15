@@ -24,8 +24,8 @@ export const useUpdateOfferStatus = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ offerId, status, reason }: { offerId: string; status: OfferStatus; reason?: string }) =>
-      offersApi.updateStatus(offerId, status, reason),
+    mutationFn: ({ applicationId, status, reason }: { applicationId: string; status: OfferStatus; reason?: string }) =>
+      offersApi.updateStatus(applicationId, status, reason),
     onSuccess: (_, variables) => {
       const label = variables.status.replace(/_/g, ' ').toLowerCase();
       toast.success(`Offer ${label} successfully`);
@@ -41,8 +41,8 @@ export const useExtendOffer = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ offerId, data }: { offerId: string; data: ExtendOfferData }) =>
-      offersApi.extend(offerId, data),
+    mutationFn: ({ applicationId, data }: { applicationId: string; data: ExtendOfferData }) =>
+      offersApi.extend(applicationId, data),
     onSuccess: () => {
       toast.success('Offer extended successfully');
       queryClient.invalidateQueries({ queryKey: offerKeys.all });

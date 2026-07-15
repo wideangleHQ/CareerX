@@ -16,11 +16,11 @@ export default function JobDetailsPage() {
 
   const { data: res, isLoading, error } = useQuery({
     queryKey: ['opportunity', id],
-    queryFn: () => opportunitiesApi.findOne(id),
+    queryFn: () => opportunitiesApi.findPublic(),
     enabled: !!id,
   });
 
-  const job = res?.data;
+  const job = (res?.data ?? []).find((j: any) => j.opportunityId === id) as any;
 
   if (isLoading) {
     return (
@@ -54,27 +54,27 @@ export default function JobDetailsPage() {
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
             <div>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 mb-4 leading-tight">
-                {job.public_title || job.internal_position}
+                {job.name}
               </h1>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-neutral-600 font-medium">
                 <span className="flex items-center gap-1.5">
-                  <Briefcase className="h-4 w-4 text-neutral-400" /> {job.department?.name || 'General'}
+                  <Briefcase className="h-4 w-4 text-neutral-400" /> {job.departmentName || 'General'}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin className="h-4 w-4 text-neutral-400" /> {job.location || 'Flexible Location'}
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <Clock className="h-4 w-4 text-neutral-400" /> {job.hiring_type?.replace('_', ' ')}
+                  <Clock className="h-4 w-4 text-neutral-400" /> {job.employmentType?.replace('_', ' ')}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Badge variant="secondary" className="bg-neutral-100 text-neutral-700 hover:bg-neutral-200 border-none shadow-none text-[10px] uppercase tracking-wider font-bold">
-                    {job.work_mode?.replace('_', ' ')}
+                    {job.workMode?.replace('_', ' ')}
                   </Badge>
                 </span>
               </div>
             </div>
             <div className="shrink-0">
-              <Link href={`/apply?opportunityId=${job.id}`}>
+              <Link href={`/apply?opportunityId=${job.opportunityId}`}>
                 <Button size="lg" className="w-full md:w-auto cursor-pointer rounded-full px-8 text-base font-semibold shadow-sm">
                   Apply for this position
                 </Button>
@@ -106,13 +106,13 @@ export default function JobDetailsPage() {
             </section>
           )}
 
-          {job.preferred_languages && job.preferred_languages.length > 0 && (
+          {job.requiredSkills && job.requiredSkills.length > 0 && (
             <section>
-              <h2 className="text-xl font-bold text-neutral-900 mb-4">Skills & Languages</h2>
+              <h2 className="text-xl font-bold text-neutral-900 mb-4">Skills & Requirements</h2>
               <div className="flex flex-wrap gap-2">
-                {job.preferred_languages.map(lang => (
-                  <span key={lang} className="px-3 py-1 bg-white border border-neutral-200 rounded-full text-sm font-medium text-neutral-700">
-                    {lang}
+                {job.requiredSkills.map((skill: string) => (
+                  <span key={skill} className="px-3 py-1 bg-white border border-neutral-200 rounded-full text-sm font-medium text-neutral-700">
+                    {skill}
                   </span>
                 ))}
               </div>
@@ -137,7 +137,7 @@ export default function JobDetailsPage() {
                 <Briefcase className="h-5 w-5 text-primary shrink-0" />
                 <div>
                   <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Career Level</p>
-                  <p className="text-sm font-medium text-neutral-900 mt-0.5">{job.career_level?.replace('_', ' ')}</p>
+                  <p className="text-sm font-medium text-neutral-900 mt-0.5">{job.careerLevel?.replace('_', ' ')}</p>
                 </div>
               </li>
               <li className="flex gap-3">
@@ -145,28 +145,26 @@ export default function JobDetailsPage() {
                 <div>
                   <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Experience</p>
                   <p className="text-sm font-medium text-neutral-900 mt-0.5">
-                    {job.min_experience_years} - {job.max_experience_years || 'No limit'} years
+                    {job.experienceRange || 'Not specified'}
                   </p>
                 </div>
               </li>
-              {job.educational_qualification && (
+              {job.educationalQualification && (
                 <li className="flex gap-3">
                   <GraduationCap className="h-5 w-5 text-primary shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Education</p>
-                    <p className="text-sm font-medium text-neutral-900 mt-0.5">{job.educational_qualification}</p>
+                    <p className="text-sm font-medium text-neutral-900 mt-0.5">{job.educationalQualification}</p>
                   </div>
                 </li>
               )}
-              {(job.min_salary || job.max_salary) && (
+              {job.salaryRange && (
                 <li className="flex gap-3">
                   <DollarSign className="h-5 w-5 text-primary shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Salary Range</p>
                     <p className="text-sm font-medium text-neutral-900 mt-0.5">
-                      {job.min_salary ? `$${job.min_salary.toLocaleString()}` : ''}
-                      {job.min_salary && job.max_salary ? ' - ' : ''}
-                      {job.max_salary ? `$${job.max_salary.toLocaleString()}` : (job.min_salary ? '+' : 'Undisclosed')}
+                      {job.salaryRange}
                     </p>
                   </div>
                 </li>
@@ -174,7 +172,7 @@ export default function JobDetailsPage() {
             </ul>
             
             <div className="mt-8 pt-6 border-t border-neutral-100">
-              <Link href={`/apply?opportunityId=${job.id}`}>
+              <Link href={`/apply?opportunityId=${job.opportunityId}`}>
                 <Button className="w-full cursor-pointer rounded-full font-semibold">Apply Now</Button>
               </Link>
             </div>

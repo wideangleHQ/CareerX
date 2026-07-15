@@ -11,10 +11,9 @@ import Link from 'next/link';
 export function OpenOpportunitiesWidget() {
   const { data: res, isLoading } = useQuery({
     queryKey: ['dashboard', 'open-opportunities'],
-    queryFn: () => opportunitiesApi.findAll({ status: 'PUBLISHED', limit: 5, sortField: 'updated_at', sortOrder: 'desc' }),
+    queryFn: () => opportunitiesApi.findPublic({ limit: '5' }),
   });
-
-  const opportunities = res?.data || [];
+  const opportunities = res?.data ?? [];
 
   return (
     <Card className="border-neutral-200">
@@ -41,18 +40,20 @@ export function OpenOpportunitiesWidget() {
           </div>
         ) : (
           <div className="divide-y divide-neutral-100">
-            {opportunities.map((opp) => (
-              <div key={opp.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between text-sm">
+            {opportunities.map((opp: any) => (
+              <div key={opp.opportunityId} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between text-sm">
                 <div className="min-w-0 flex-1">
-                  <p className="font-medium text-black truncate">{opp.public_title}</p>
+                  <p className="font-medium text-black truncate">{opp.name}</p>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {opp.department?.name || '—'} · {opp.hiring_type.replace(/_/g, ' ')} · {opp.location}
+                    {opp.departmentName || '—'} · {opp.employmentType?.replace(/_/g, ' ') || '—'} · {opp.location}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 ml-3 shrink-0">
-                  <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700">
-                    {opp._count?.applications ?? 0} apps
-                  </Badge>
+                  {opp.numberOfOpenings && (
+                    <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700">
+                      {opp.numberOfOpenings} openings
+                    </Badge>
+                  )}
                 </div>
               </div>
             ))}

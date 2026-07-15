@@ -20,10 +20,10 @@ import { useExtendOffer } from '../hooks/useOfferMutations';
 interface ExtendOfferDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  offerId: string;
+  applicationId: string;
 }
 
-export function ExtendOfferDialog({ open, onOpenChange, offerId }: ExtendOfferDialogProps) {
+export function ExtendOfferDialog({ open, onOpenChange, applicationId }: ExtendOfferDialogProps) {
   const extendOffer = useExtendOffer();
 
   const form = useForm<ExtendOfferData>({
@@ -35,7 +35,7 @@ export function ExtendOfferDialog({ open, onOpenChange, offerId }: ExtendOfferDi
   });
 
   const onSubmit = async (data: ExtendOfferData) => {
-    await extendOffer.mutateAsync({ offerId, data });
+    await extendOffer.mutateAsync({ applicationId, data });
     onOpenChange(false);
     form.reset();
   };

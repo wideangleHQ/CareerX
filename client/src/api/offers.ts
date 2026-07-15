@@ -38,24 +38,25 @@ export const offersApi = {
     reportingManager?: string;
     remarks?: string;
   }): Promise<{ success: boolean; data: Offer }> => {
-    const { data } = await axiosClient.post('/api/v1/offers/generate', payload);
+    const { applicationId, ...body } = payload;
+    const { data } = await axiosClient.post(`/api/v1/applications/${applicationId}/offer`, body);
     return data;
   },
 
   updateStatus: async (
-    offerId: string,
+    applicationId: string,
     status: OfferStatus,
     reason?: string
   ): Promise<{ success: boolean; data: Offer }> => {
-    const { data } = await axiosClient.patch(`/api/v1/offers/${offerId}/status`, { status, reason });
+    const { data } = await axiosClient.patch(`/api/v1/applications/${applicationId}/offer/status`, { status, reason });
     return data;
   },
 
   extend: async (
-    offerId: string,
+    applicationId: string,
     payload: { expiryDate: string; joiningDate?: string }
   ): Promise<{ success: boolean; data: Offer }> => {
-    const { data } = await axiosClient.patch(`/api/v1/offers/${offerId}/extend`, payload);
+    const { data } = await axiosClient.patch(`/api/v1/applications/${applicationId}/offer/extend`, payload);
     return data;
   },
 };

@@ -2,8 +2,8 @@ import axiosClient from './client';
 import type { Department } from './types';
 
 export const departmentsApi = {
-  getHiring: async (): Promise<Department[]> => {
-    const { data } = await axiosClient.get('/api/v1/departments/hiring');
+  getHiring: async (params?: any): Promise<any[]> => {
+    const { data } = await axiosClient.get('/api/v1/departments/hiring', { params });
     return data;
   },
 

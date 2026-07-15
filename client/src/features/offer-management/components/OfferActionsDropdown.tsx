@@ -63,7 +63,7 @@ export function OfferActionsDropdown({ offer, onExtend }: OfferActionsDropdownPr
             {transitions.map((t) => (
               <DropdownMenuItem
                 key={t.status}
-                onClick={() => updateStatus.mutate({ offerId: offer.id, status: t.status })}
+                onClick={() => updateStatus.mutate({ applicationId: offer.application_id, status: t.status })}
                 disabled={updateStatus.isPending}
                 className={`cursor-pointer ${t.className || ''}`}
               >

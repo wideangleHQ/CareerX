@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { departmentsApi } from '@/src/api/departments';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -13,10 +13,20 @@ interface DepartmentSelectProps {
 }
 
 export function DepartmentSelect({ value, onChange, error }: DepartmentSelectProps) {
-  const { data: departments = [], isLoading } = useQuery({
+  const { data: rawDepartments = [], isLoading } = useQuery({
     queryKey: ['hiring-departments'],
     queryFn: departmentsApi.getHiring,
   });
+
+  const departments = useMemo(() => {
+    const map = new Map<string, string>();
+    rawDepartments.forEach((dept: any) => {
+      if (dept.id && !map.has(dept.id)) {
+        map.set(dept.id, dept.departmentName || dept.name);
+      }
+    });
+    return Array.from(map, ([id, name]) => ({ id, name }));
+  }, [rawDepartments]);
 
   return (
     <div className="flex flex-col gap-1.5">

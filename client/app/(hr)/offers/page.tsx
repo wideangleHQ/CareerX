@@ -17,7 +17,7 @@ export default function OffersPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
 
-  const [extendOfferId, setExtendOfferId] = useState<string | null>(null);
+  const [extendApplicationId, setExtendApplicationId] = useState<string | null>(null);
 
   const { data: response, isLoading } = useOffers({
     page,
@@ -94,11 +94,11 @@ export default function OffersPage() {
         )}
       </div>
 
-      {extendOfferId && (
+      {extendApplicationId && (
         <ExtendOfferDialog
-          open={!!extendOfferId}
-          onOpenChange={(open) => !open && setExtendOfferId(null)}
-          offerId={extendOfferId}
+          open={!!extendApplicationId}
+          onOpenChange={(open) => !open && setExtendApplicationId(null)}
+          applicationId={extendApplicationId}
         />
       )}
     </div>

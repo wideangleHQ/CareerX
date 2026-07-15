@@ -32,7 +32,7 @@ export const notificationsApi = {
   },
 
   markAllRead: async (): Promise<{ success: boolean }> => {
-    const { data } = await axiosClient.post('/api/v1/notifications/mark-all-read');
+    const { data } = await axiosClient.patch('/api/v1/notifications/read-all');
     return data;
   },
 };

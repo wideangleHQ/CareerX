@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { opportunitiesApi } from '@/src/api/opportunities';
-import { departmentsApi } from '@/src/api/departments';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,22 +19,31 @@ export default function JobListingPage() {
   
   const debouncedSearch = useDebounce(search, 500);
 
-  const { data: departmentsRes } = useQuery({
-    queryKey: ['public-departments'],
-    queryFn: departmentsApi.getAll,
+  const { data: allRes } = useQuery({
+    queryKey: ['public-opportunities-all'],
+    queryFn: () => opportunitiesApi.findPublic(),
   });
+  const allOpportunities = allRes?.data ?? [];
 
-  const { data: opportunitiesRes, isLoading } = useQuery({
+  const departmentsRes = React.useMemo(() => {
+    const map = new Map<string, string>();
+    allOpportunities.forEach((opp: any) => {
+      if (opp.departmentId && opp.departmentName && !map.has(opp.departmentId)) {
+        map.set(opp.departmentId, opp.departmentName);
+      }
+    });
+    return Array.from(map, ([id, name]) => ({ id, name }));
+  }, [allOpportunities]);
+
+  const { data: jobsRes, isLoading } = useQuery({
     queryKey: ['public-opportunities', debouncedSearch, departmentId, workMode],
-    queryFn: () => opportunitiesApi.findAll({
+    queryFn: () => opportunitiesApi.findPublic({
       search: debouncedSearch || undefined,
       departmentId: departmentId !== 'ALL' ? departmentId : undefined,
-      status: 'PUBLISHED',
-      // workMode could be added to backend params if supported
+      workMode: workMode !== 'ALL' ? workMode : undefined,
     }),
   });
-
-  const jobs = opportunitiesRes?.data || [];
+  const jobs = jobsRes?.data ?? [];
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-24">
@@ -97,33 +105,33 @@ export default function JobListingPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {jobs.map((job) => (
-              <Card key={job.id} className="hover:border-primary/40 transition-colors shadow-sm">
+            {jobs.map((job: any) => (
+              <Card key={job.opportunityId} className="hover:border-primary/40 transition-colors shadow-sm">
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div>
                       <h2 className="text-xl font-bold text-neutral-900 mb-2">
-                        <Link href={`/jobs/${job.id}`} className="hover:text-primary transition-colors">
-                          {job.public_title || job.internal_position}
+                        <Link href={`/jobs/${job.opportunityId}`} className="hover:text-primary transition-colors">
+                          {job.name}
                         </Link>
                       </h2>
                       <div className="flex flex-wrap items-center gap-4 text-sm text-neutral-600">
                         <span className="flex items-center gap-1">
-                          <Briefcase className="h-4 w-4 text-neutral-400" /> {job.department?.name || 'General'}
+                          <Briefcase className="h-4 w-4 text-neutral-400" /> {job.departmentName || 'General'}
                         </span>
                         <span className="flex items-center gap-1">
                           <MapPin className="h-4 w-4 text-neutral-400" /> {job.location || 'Flexible'}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Clock className="h-4 w-4 text-neutral-400" /> {job.hiring_type?.replace('_', ' ') || 'Full Time'}
+                          <Clock className="h-4 w-4 text-neutral-400" /> {job.employmentType?.replace('_', ' ') || 'Full Time'}
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge variant="secondary" className="bg-neutral-100 font-semibold uppercase tracking-wider text-[10px]">
-                        {job.work_mode?.replace('_', ' ')}
+                        {job.workMode?.replace('_', ' ')}
                       </Badge>
-                      <Link href={`/jobs/${job.id}`}>
+                      <Link href={`/jobs/${job.opportunityId}`}>
                         <Button className="cursor-pointer">Apply Now</Button>
                       </Link>
                     </div>

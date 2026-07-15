@@ -1,55 +1,38 @@
 import { useQuery } from '@tanstack/react-query';
-import { applicationsApi } from '@/src/api/applications';
-import { interviewsApi } from '@/src/api/interviews';
-import { offersApi } from '@/src/api/offers';
+import axiosClient from '@/src/api/client';
 import { opportunitiesApi } from '@/src/api/opportunities';
 
 export function useDashboardStats() {
-  const totalApps = useQuery({
-    queryKey: ['dashboard', 'count-total-apps'],
-    queryFn: () => applicationsApi.findAll({ limit: 1 }),
-  });
-
-  const newApps = useQuery({
-    queryKey: ['dashboard', 'count-new-apps'],
-    queryFn: () => applicationsApi.findAll({ status: 'NEW', limit: 1 }),
-  });
-
-  const selectedApps = useQuery({
-    queryKey: ['dashboard', 'count-selected-apps'],
-    queryFn: () => applicationsApi.findAll({ status: 'SELECTED', limit: 1 }),
-  });
-
-  const interviews = useQuery({
-    queryKey: ['dashboard', 'count-interviews'],
-    queryFn: () => interviewsApi.findAll({ isBooked: true }),
+  const stats = useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: async () => {
+      const { data } = await axiosClient.get('/api/v1/dashboard/stats');
+      return data;
+    },
   });
 
   const offerStats = useQuery({
-    queryKey: ['dashboard', 'offer-stats'],
-    queryFn: () => offersApi.getStats(),
+    queryKey: ['dashboard', 'offers-stats'],
+    queryFn: async () => {
+      const { data } = await axiosClient.get('/api/v1/dashboard/offers-stats');
+      return data;
+    },
   });
 
-  const opportunityStats = useQuery({
-    queryKey: ['dashboard', 'opportunity-stats'],
-    queryFn: () => opportunitiesApi.getStats(),
+  const hiringData = useQuery({
+    queryKey: ['dashboard', 'hiring-count'],
+    queryFn: () => opportunitiesApi.findPublic(),
   });
 
-  const isLoading =
-    totalApps.isLoading ||
-    newApps.isLoading ||
-    selectedApps.isLoading ||
-    interviews.isLoading ||
-    offerStats.isLoading ||
-    opportunityStats.isLoading;
+  const isLoading = stats.isLoading || offerStats.isLoading;
 
   return {
     isLoading,
-    totalApplications: totalApps.data?.total ?? 0,
-    newApplications: newApps.data?.total ?? 0,
-    selectedCount: selectedApps.data?.total ?? 0,
-    interviewsScheduled: interviews.data?.data?.length ?? 0,
+    totalApplications: stats.data?.data?.totalApplications ?? 0,
+    newApplications: stats.data?.data?.newApplications ?? 0,
+    selectedCount: stats.data?.data?.hiredCount ?? 0,
+    interviewsScheduled: stats.data?.data?.interviewsScheduled ?? 0,
     offers: offerStats.data?.data ?? null,
-    opportunities: opportunityStats.data?.data ?? null,
+    openPositions: hiringData.data?.data?.length ?? 0,
   };
 }

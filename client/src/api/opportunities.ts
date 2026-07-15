@@ -7,6 +7,11 @@ import type {
 } from './types';
 
 export const opportunitiesApi = {
+  findPublic: async (params?: Record<string, string | undefined>): Promise<{ success: boolean; data: any[] }> => {
+    const { data } = await axiosClient.get('/api/v1/opportunities/public', { params });
+    return data;
+  },
+
   create: async (payload: Partial<HiringOpportunity>): Promise<{ success: boolean; data: HiringOpportunity }> => {
     const { data } = await axiosClient.post('/api/v1/opportunities', payload);
     return data;

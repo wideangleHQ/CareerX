@@ -2,20 +2,23 @@
 
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { offersApi } from '@/src/api/offers';
+import axiosClient from '@/src/api/client';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loader2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { format } from 'date-fns';
-import { OfferStatusBadge } from '@/src/features/offer-management/components/OfferStatusBadge';
+import { Badge } from '@/components/ui/badge';
 
 export function RecentOffersWidget() {
   const { data: res, isLoading } = useQuery({
     queryKey: ['dashboard', 'recent-offers'],
-    queryFn: () => offersApi.findAll({ limit: 5, sortField: 'updated_at', sortOrder: 'desc' }),
+    queryFn: async () => {
+      const { data } = await axiosClient.get('/api/v1/dashboard/offers-stats');
+      return data;
+    },
   });
 
-  const offers = res?.data || [];
+  const recentOffers = res?.data?.recentOffers || [];
 
   return (
     <Card className="border-neutral-200">
@@ -36,30 +39,31 @@ export function RecentOffersWidget() {
           <div className="flex h-32 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
           </div>
-        ) : offers.length === 0 ? (
+        ) : recentOffers.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-sm text-muted-foreground">No offers generated yet.</p>
           </div>
         ) : (
           <div className="divide-y divide-neutral-100">
-            {offers.map((offer) => (
+            {recentOffers.map((offer: any) => (
               <div key={offer.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between text-sm">
                 <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/offers/${offer.id}`}
-                    className="font-medium text-black hover:underline truncate block"
-                  >
-                    {offer.application?.candidate?.full_name || offer.offer_reference}
-                  </Link>
+                  <p className="font-medium text-black truncate">
+                    {offer.candidateName || offer.applicationCode}
+                  </p>
                   <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                    {offer.department?.name || offer.application?.department?.name || '—'} · {offer.currency} {offer.salary.toLocaleString()}
+                    {offer.departmentName || '—'} · {offer.status?.replace(/_/g, ' ')}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 ml-3 shrink-0">
-                  <OfferStatusBadge status={offer.status} className="text-[10px]" />
-                  <span className="text-[10px] text-neutral-400 hidden sm:inline">
-                    {format(new Date(offer.updated_at), 'MMM d')}
-                  </span>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {offer.status?.replace(/_/g, ' ')}
+                  </Badge>
+                  {offer.updatedAt && (
+                    <span className="text-[10px] text-neutral-400 hidden sm:inline">
+                      {format(new Date(offer.updatedAt), 'MMM d')}
+                    </span>
+                  )}
                 </div>
               </div>
             ))}

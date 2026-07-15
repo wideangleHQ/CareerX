@@ -3,9 +3,9 @@ import { z } from 'zod';
 export const OpportunityInternalSchema = z.object({
   internal_position: z.string().min(2, 'Internal position is required'),
   department_id: z.string().min(1, 'Department is required'),
-  hiring_priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
-  hiring_type: z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP']),
-  career_level: z.enum(['ENTRY_LEVEL', 'MID_LEVEL', 'SENIOR_LEVEL', 'EXECUTIVE']),
+  hiring_priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
+  hiring_type: z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'FREELANCE']),
+  career_level: z.enum(['ENTRY_LEVEL', 'JUNIOR', 'MID_LEVEL', 'SENIOR', 'LEAD', 'MANAGER', 'DIRECTOR', 'EXECUTIVE']),
   hiring_manager_id: z.string().optional(),
   reporting_manager_id: z.string().optional(),
   number_of_openings: z.coerce.number().min(1, 'Must have at least 1 opening'),

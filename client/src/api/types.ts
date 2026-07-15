@@ -207,9 +207,9 @@ export interface InterviewReportItem {
 }
 
 export type OpportunityStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED' | 'ARCHIVED';
-export type OpportunityPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-export type HiringType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERNSHIP';
-export type CareerLevel = 'ENTRY_LEVEL' | 'MID_LEVEL' | 'SENIOR_LEVEL' | 'EXECUTIVE';
+export type OpportunityPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+export type HiringType = 'FULL_TIME' | 'PART_TIME' | 'CONTRACT' | 'INTERNSHIP' | 'FREELANCE';
+export type CareerLevel = 'ENTRY_LEVEL' | 'JUNIOR' | 'MID_LEVEL' | 'SENIOR' | 'LEAD' | 'MANAGER' | 'DIRECTOR' | 'EXECUTIVE';
 export type WorkMode = 'ON_SITE' | 'HYBRID' | 'REMOTE';
 
 export interface HiringOpportunity {

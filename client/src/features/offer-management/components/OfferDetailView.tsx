@@ -34,7 +34,7 @@ export function OfferDetailView({ offer }: OfferDetailViewProps) {
   const canEdit = user?.permissions.includes('CAREER_ADMIN') || user?.permissions.includes('CAREER_EDIT');
 
   const handleStatusChange = (status: OfferStatus) => {
-    updateStatus.mutate({ offerId: offer.id, status });
+    updateStatus.mutate({ applicationId: offer.application_id, status });
   };
 
   const infoItems = [
@@ -210,7 +210,7 @@ export function OfferDetailView({ offer }: OfferDetailViewProps) {
         <ExtendOfferDialog
           open={extendOpen}
           onOpenChange={setExtendOpen}
-          offerId={offer.id}
+          applicationId={offer.application_id}
         />
       )}
     </div>

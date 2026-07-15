@@ -18,7 +18,7 @@ export default function PublicLayout({
           <span>CareerX Portal</span>
         </div>
       </header>
-      <main className="flex-1 flex items-center justify-center p-6">
+      <main className="flex-1 flex flex-col w-full">
         {children}
       </main>
     </div>

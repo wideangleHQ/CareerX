@@ -93,7 +93,7 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Open Positions"
-            value={stats.opportunities?.PUBLISHED ?? 0}
+            value={stats.openPositions}
             description="Published opportunities"
             icon={<FileSignature className="h-4.5 w-4.5 text-purple-600" />}
           />

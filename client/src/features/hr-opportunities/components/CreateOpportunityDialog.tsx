@@ -33,11 +33,16 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
   const form = useForm<OpportunityWizardData>({
     resolver: zodResolver(OpportunityWizardSchema),
     defaultValues: opportunityToEdit || {
+      department_id: '',
+      internal_position: '',
       number_of_openings: 1,
       hiring_priority: 'MEDIUM',
       hiring_type: 'FULL_TIME',
       career_level: 'MID_LEVEL',
       work_mode: 'ON_SITE',
+      public_title: '',
+      about: '',
+      location: '',
       resume_required: true,
       employment_proof_required: false,
     },
@@ -68,11 +73,24 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
   };
 
   return (
-    <Dialog open={open} onOpenChange={(val) => {
+    <Dialog modal={false} open={open} onOpenChange={(val) => {
       onOpenChange(val);
       if (!val) {
         setStep(1);
-        form.reset();
+        form.reset({
+          department_id: '',
+          internal_position: '',
+          number_of_openings: 1,
+          hiring_priority: 'MEDIUM',
+          hiring_type: 'FULL_TIME',
+          career_level: 'MID_LEVEL',
+          work_mode: 'ON_SITE',
+          public_title: '',
+          about: '',
+          location: '',
+          resume_required: true,
+          employment_proof_required: false,
+        });
       }
     }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -98,7 +116,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                   control={form.control}
                   name="department_id"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
                       <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
                       <SelectContent>
                         {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
@@ -115,13 +133,14 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                   control={form.control}
                   name="hiring_type"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="FULL_TIME">Full Time</SelectItem>
                         <SelectItem value="PART_TIME">Part Time</SelectItem>
                         <SelectItem value="CONTRACT">Contract</SelectItem>
                         <SelectItem value="INTERNSHIP">Internship</SelectItem>
+                        <SelectItem value="FREELANCE">Freelance</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -134,12 +153,16 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                   control={form.control}
                   name="career_level"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ENTRY_LEVEL">Entry Level</SelectItem>
+                        <SelectItem value="JUNIOR">Junior</SelectItem>
                         <SelectItem value="MID_LEVEL">Mid Level</SelectItem>
-                        <SelectItem value="SENIOR_LEVEL">Senior Level</SelectItem>
+                        <SelectItem value="SENIOR">Senior</SelectItem>
+                        <SelectItem value="LEAD">Lead</SelectItem>
+                        <SelectItem value="MANAGER">Manager</SelectItem>
+                        <SelectItem value="DIRECTOR">Director</SelectItem>
                         <SelectItem value="EXECUTIVE">Executive</SelectItem>
                       </SelectContent>
                     </Select>
@@ -158,13 +181,13 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                   control={form.control}
                   name="hiring_priority"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="LOW">Low</SelectItem>
                         <SelectItem value="MEDIUM">Medium</SelectItem>
                         <SelectItem value="HIGH">High</SelectItem>
-                        <SelectItem value="CRITICAL">Critical</SelectItem>
+                        <SelectItem value="URGENT">Urgent</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
@@ -203,7 +226,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                   control={form.control}
                   name="work_mode"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ON_SITE">On-Site</SelectItem>

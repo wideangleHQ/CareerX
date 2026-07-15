@@ -6,5 +6,9 @@ export const metadata = {
 };
 
 export default function ApplyPage() {
-  return <ApplicationForm />;
+  return (
+    <div className="flex-1 flex items-center justify-center p-6 bg-neutral-50/40 w-full min-h-[calc(100vh-4rem)]">
+      <ApplicationForm />
+    </div>
+  );
 }

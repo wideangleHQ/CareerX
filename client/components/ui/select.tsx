@@ -31,10 +31,10 @@ const SelectContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Popup>
 >(({ className, children, ...props }, ref) => (
   <SelectPrimitive.Portal>
-    <SelectPrimitive.Positioner>
+    <SelectPrimitive.Positioner className="z-[100]">
       <SelectPrimitive.Popup
         ref={ref}
-        className={cn("z-50 min-w-[8rem] rounded-lg border bg-background shadow-md max-h-[300px] overflow-y-auto custom-scrollbar", className)}
+        className={cn("min-w-[8rem] rounded-lg border bg-background shadow-md max-h-[300px] overflow-y-auto custom-scrollbar", className)}
         {...props}
       >
         <SelectPrimitive.List className="p-1">{children}</SelectPrimitive.List>
