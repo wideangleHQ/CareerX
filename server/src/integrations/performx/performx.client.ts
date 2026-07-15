@@ -25,6 +25,9 @@ export class PerformxClient {
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
+      console.log('Base URL:', this.baseUrl);
+console.log('Token exists:', !!token);
+console.log('Token length:', token?.length);
       const response = await fetch(`${this.baseUrl}/api/v1/auth/verify`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -37,7 +40,8 @@ export class PerformxClient {
       }
 
       if (!response.ok) {
-        throw new ServiceUnavailableException('External Dependency Unavailable');
+        console.log(await response.text());
+        
       }
 
       const data = (await response.json()) as Partial<PerformxVerifyResponse>;
