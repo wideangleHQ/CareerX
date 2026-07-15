@@ -6,8 +6,11 @@ export interface CreateApplicationDto {
   mobileNumber: string;
   whatsappNumber?: string | null;
   departmentId: string;
+  opportunityId?: string | null;
   selfDescription: string;
+  experienceYears: number;
   resumePath?: string | null;
+  previousOrgProofPath?: string | null;
 }
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -51,13 +54,27 @@ export function parseCreateApplicationDto(value: unknown): CreateApplicationDto 
   }
 
   const payload = value as Record<string, unknown>;
+
+  const experienceYears = typeof payload.experienceYears === 'number'
+    ? payload.experienceYears
+    : typeof payload.experienceYears === 'string'
+      ? parseInt(payload.experienceYears, 10)
+      : NaN;
+
+  if (isNaN(experienceYears) || experienceYears < 0 || experienceYears > 50) {
+    throw new BadRequestException('Validation Error: experienceYears must be between 0 and 50');
+  }
+
   return {
     fullName: parseRequiredText(payload.fullName, 255, 2),
     email: parseEmail(payload.email),
     mobileNumber: parsePhone(payload.mobileNumber, true) as string,
     whatsappNumber: parsePhone(payload.whatsappNumber, false),
     departmentId: parseUuid(payload.departmentId),
+    opportunityId: payload.opportunityId ? parseUuid(payload.opportunityId) : null,
     selfDescription: parseRequiredText(payload.selfDescription, 5000, 10),
+    experienceYears,
     resumePath: payload.resumePath ? parseRequiredText(payload.resumePath, 500) : null,
+    previousOrgProofPath: payload.previousOrgProofPath ? parseRequiredText(payload.previousOrgProofPath, 500) : null,
   };
 }

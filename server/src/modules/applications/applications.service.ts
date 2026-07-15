@@ -79,14 +79,17 @@ export class ApplicationsService {
       }
 
       return await this.prisma.$transaction(async (tx) => {
+        const opportunityWhere = dto.opportunityId
+          ? { id: dto.opportunityId, status: 'PUBLISHED' as const }
+          : { department_id: dto.departmentId, status: 'PUBLISHED' as const };
+
         const opportunity = await tx.hiring_opportunities.findFirst({
-          where: { 
-             department_id: dto.departmentId,
-             status: 'PUBLISHED'
-          },
-          select: { id: true, application_deadline: true, resume_required: true }
+          where: opportunityWhere,
+          select: { id: true, department_id: true, application_deadline: true, resume_required: true }
         });
         if (!opportunity) throw new ConflictException('Opportunity is not available');
+
+        const departmentId = opportunity.department_id;
         
         if (opportunity.application_deadline && new Date(opportunity.application_deadline) < new Date()) {
           throw new ConflictException('Application deadline has passed');
@@ -132,14 +135,24 @@ export class ApplicationsService {
 
         const applicationCode = await this.generateApplicationCode(tx);
 
+        const fileCreates: { file_type: 'RESUME' | 'ORG_PROOF'; storage_path: string; file_name: string }[] = [];
+        if (dto.resumePath) {
+          fileCreates.push({ file_type: 'RESUME', storage_path: dto.resumePath, file_name: dto.resumePath.split('/').pop() || 'resume.pdf' });
+        }
+        if (dto.previousOrgProofPath) {
+          fileCreates.push({ file_type: 'ORG_PROOF', storage_path: dto.previousOrgProofPath, file_name: dto.previousOrgProofPath.split('/').pop() || 'org-proof' });
+        }
+
         const application = await tx.applications.create({
           data: {
             application_code: applicationCode,
             candidate_id: candidate.id,
-            department_id: dto.departmentId,
+            department_id: departmentId,
             hiring_opportunity_id: opportunity.id,
-            assigned_hr_id: null, // HR is dynamically assigned after interview booking
+            assigned_hr_id: null,
             self_description: dto.selfDescription,
+            experience_years: dto.experienceYears,
+            previous_org_proof_url: dto.previousOrgProofPath ?? null,
             status: 'NEW',
             status_history: {
               create: {
@@ -149,15 +162,7 @@ export class ApplicationsService {
                 reason: 'Application submitted',
               },
             },
-            ...(dto.resumePath ? {
-              files: {
-                create: {
-                  file_type: 'RESUME',
-                  storage_path: dto.resumePath,
-                  file_name: dto.resumePath.split('/').pop() || 'resume.pdf'
-                }
-              }
-            } : {})
+            ...(fileCreates.length > 0 ? { files: { create: fileCreates } } : {}),
           },
           select: applicationDetailSelect,
         });
