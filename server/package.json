@@ -10,7 +10,9 @@
     "build": "nest build --path tsconfig.build.json",
     "prisma:generate": "bunx prisma generate",
     "prisma:migrate": "bunx prisma migrate dev",
-    "clean": "bunx rimraf dist"
+    "clean": "bunx rimraf dist",
+    "postinstall": "bunx prisma generate",
+    "prebuild": "bunx prisma generate"
   },
   "keywords": [],
   "author": "",
