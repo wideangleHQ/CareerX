@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
+import { AppConfig } from '@/src/config/app';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = AppConfig.apiUrl;
 
 const axiosClient: AxiosInstance = axios.create({
   baseURL: API_URL,

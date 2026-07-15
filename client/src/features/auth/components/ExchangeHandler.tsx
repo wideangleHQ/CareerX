@@ -4,9 +4,9 @@ import React, { useEffect, useRef } from 'react';
 import { useAuthExchange } from '../hooks/useAuthExchange';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AppConfig } from '@/src/config/app';
 
-const PERFORMX_LOGIN_URL =
-  process.env.NEXT_PUBLIC_PERFORMX_LOGIN_URL ?? 'http://localhost:4001/login';
+const PERFORMX_LOGIN_URL = AppConfig.performxLoginUrl;
 
 /**
  * ExchangeHandler

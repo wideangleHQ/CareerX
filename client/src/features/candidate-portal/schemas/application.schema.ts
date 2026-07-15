@@ -8,7 +8,7 @@ export const candidateApplicationSchema = z.object({
   whatsappNumber: z.string().optional().or(z.literal('')),
   departmentId: z.string().uuid('Department is required'),
   opportunityId: z.string().uuid('Opportunity is required'),
-  experienceYears: z.number({ required_error: 'Please select your experience' }).min(0).max(50),
+  experienceYears: z.number({ error: 'Please select your experience' }).min(0).max(50),
   resume: z.any().refine((file) => file !== null && file !== undefined, 'Resume file is required'),
   previousOrgProof: z.any().optional(),
   selfDescription: z.string().min(20, 'Please write at least 20 characters about yourself'),

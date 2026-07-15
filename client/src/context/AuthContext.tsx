@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { User } from '@/src/api/types';
 import { authApi } from '@/src/api/auth';
+import { AppConfig } from '@/src/config/app';
 
 interface AuthContextType {
   user: User | null;
@@ -88,8 +89,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setError(null);
       queryClient.clear();
       if (typeof window !== 'undefined') {
-        const loginUrl = process.env.NEXT_PUBLIC_PERFORMX_LOGIN_URL ?? 'http://localhost:4001/login';
-        window.location.href = loginUrl;
+        window.location.href = AppConfig.performxLoginUrl;
       }
     } catch (err: any) {
       console.error('Logout error:', err);
