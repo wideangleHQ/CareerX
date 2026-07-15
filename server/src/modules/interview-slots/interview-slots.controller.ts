@@ -23,7 +23,7 @@ import type {
   SlotResponse,
 } from './interview-slots.service';
 
-@Controller('api/v1/interview-slots')
+@Controller('interview-slots')
 export class InterviewSlotsController {
   constructor(private readonly interviewSlotsService: InterviewSlotsService) {}
 

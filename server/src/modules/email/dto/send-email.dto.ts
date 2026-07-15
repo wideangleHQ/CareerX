@@ -3,9 +3,15 @@ import type { TemplateVariables } from '../templates/application-received.templa
 
 export type EmailTemplate =
   | 'interview-invitation'
+  | 'interview-reminder'
+  | 'interview-cancelled'
+  | 'interview-rescheduled'
   | 'application-received'
   | 'application-selected'
-  | 'application-rejected';
+  | 'application-rejected'
+  | 'candidate-shortlisted'
+  | 'offer-released'
+  | 'hr-assignment';
 
 export interface EmailAttachmentDto {
   filename: string;
@@ -23,9 +29,15 @@ export interface SendEmailDto {
 
 const TEMPLATES = new Set<EmailTemplate>([
   'interview-invitation',
+  'interview-reminder',
+  'interview-cancelled',
+  'interview-rescheduled',
   'application-received',
   'application-selected',
   'application-rejected',
+  'candidate-shortlisted',
+  'offer-released',
+  'hr-assignment',
 ]);
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

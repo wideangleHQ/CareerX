@@ -5,7 +5,7 @@ import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { parseSendEmailDto } from './dto/send-email.dto';
 import { EmailService } from './email.service';
 
-@Controller('api/v1/email')
+@Controller('email')
 @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
 export class EmailController {
   constructor(private readonly emailService: EmailService) {}

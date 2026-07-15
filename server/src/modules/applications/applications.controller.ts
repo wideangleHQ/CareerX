@@ -25,7 +25,7 @@ import { parseCreateApplicationDto } from './dto/create-application.dto';
 import { parseQueryApplicationsDto } from './dto/query-applications.dto';
 import { parseUpdateStatusDto } from './dto/update-status.dto';
 
-@Controller('api/v1/applications')
+@Controller('applications')
 export class ApplicationsController {
   constructor(private readonly applicationsService: ApplicationsService) {}
 

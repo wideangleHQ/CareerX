@@ -99,7 +99,7 @@ export class EmailWorker extends WorkerHost {
       throw new Error(`Email provider error (${response.status}): ${errorText}`);
     }
 
-    const result = await response.json();
+    const result = await response.json() as { id?: string };
     return result.id || 'unknown';
   }
 

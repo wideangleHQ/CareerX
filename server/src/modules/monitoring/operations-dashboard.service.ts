@@ -56,7 +56,10 @@ export class OperationsDashboardService {
     ]);
 
     return {
-      summary,
+      summary: {
+        ...summary,
+        systemStatus: summary.systemStatus as 'OPERATIONAL' | 'DEGRADED' | 'CRITICAL',
+      },
       recentActivity,
       topIssues,
       uptime: {
@@ -76,7 +79,7 @@ export class OperationsDashboardService {
       queueMetrics,
     ] = await Promise.all([
       this.prisma.applications.count(),
-      this.prisma.applications.count({ where: { status: 'PENDING' } }),
+      this.prisma.applications.count({ where: { status: 'NEW' } }),
       this.getUpcomingInterviewsCount(),
       this.queueMetrics.getAllQueueMetrics(),
     ]);
@@ -163,7 +166,7 @@ export class OperationsDashboardService {
     // Check for pending applications backlog
     const oldPendingApps = await this.prisma.applications.count({
       where: {
-        status: 'PENDING',
+        status: 'NEW',
         created_at: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }, // 7 days old
       },
     });

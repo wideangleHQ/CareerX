@@ -1,4 +1,5 @@
-import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+import type { MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { APP_INTERCEPTOR } from '@nestjs/core';
 import { CareerEventsModule } from './common/events/career-events.module';
 import { ApplicationsModule } from './modules/applications/applications.module';
@@ -12,6 +13,7 @@ import { InterviewFeedbackModule } from './modules/interview-feedback/interview-
 import { InterviewSlotsModule } from './modules/interview-slots/interview-slots.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { OpportunitiesModule } from './modules/opportunities/opportunities.module';
 import { WorkerModule } from './workers/worker.module';
 import { SchedulerModule } from './scheduler/scheduler.module';
 import { HealthModule } from './modules/health/health.module';
@@ -33,6 +35,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
     InterviewFeedbackModule,
     NotificationsModule,
     ReportsModule,
+    OpportunitiesModule,
     WorkerModule,
     SchedulerModule,
     HealthModule,

@@ -113,7 +113,7 @@ export class ApplicationsService {
               full_name: dto.fullName,
               email: dto.email,
               mobile_number: dto.mobileNumber,
-              whatsapp_number: dto.whatsappNumber,
+              whatsapp_number: dto.whatsappNumber ?? null,
             },
             select: { id: true }
           });
@@ -149,13 +149,15 @@ export class ApplicationsService {
                 reason: 'Application submitted',
               },
             },
-            files: dto.resumePath ? {
-              create: {
-                file_type: 'RESUME',
-                file_path: dto.resumePath,
-                file_name: dto.resumePath.split('/').pop() || 'resume.pdf'
+            ...(dto.resumePath ? {
+              files: {
+                create: {
+                  file_type: 'RESUME',
+                  storage_path: dto.resumePath,
+                  file_name: dto.resumePath.split('/').pop() || 'resume.pdf'
+                }
               }
-            } : undefined
+            } : {})
           },
           select: applicationDetailSelect,
         });
@@ -207,8 +209,8 @@ export class ApplicationsService {
     const application = await this.findActiveApplication(id);
     if (user) {
       const isElevated = user.permissions?.includes('CAREER_ADMIN') || user.permissions?.includes('CAREER_REPORTS');
-      if (!isElevated && application.assigned_hr_id !== user.sub) {
-        throw new NotFoundException('Application not found');
+      if (!isElevated && application.assigned_hr?.id !== user.sub) {
+        throw new NotFoundException(`Application with ID ${id} not found or you don't have permission`);
       }
     }
     return this.toDetail(application);
@@ -219,8 +221,9 @@ export class ApplicationsService {
       where: { id, deleted_at: null },
       include: {
         status_history: { include: { changed_by: true } },
-        hr_notes: { include: { author: true } },
-        candidate: { include: { files: true } },
+        hr_notes: { include: { hr: true } },
+        candidate: true,
+        files: true,
         slot_assignment: { include: { assigned_hr: true, slot: true } },
         interview_feedback: { include: { hr: true } }
       }
@@ -259,16 +262,16 @@ export class ApplicationsService {
       events.push({
         eventType: 'HR_NOTE_ADDED',
         timestamp: note.created_at,
-        actor: note.author ? { id: note.author.id, name: note.author.full_name } : undefined,
+        actor: note.hr ? { id: note.hr.id, name: note.hr.full_name } : undefined,
         metadata: { noteId: note.id }
       });
     }
 
-    for (const file of application.candidate.files) {
+    for (const file of application.files) {
       events.push({
         eventType: 'DOCUMENT_UPLOADED',
         timestamp: file.created_at,
-        metadata: { fileType: file.file_type, fileName: file.original_name }
+        metadata: { fileType: file.file_type, fileName: file.file_name }
       });
     }
 
@@ -280,8 +283,7 @@ export class ApplicationsService {
         actor: sa.assigned_hr ? { id: sa.assigned_hr.id, name: sa.assigned_hr.full_name } : undefined,
         metadata: {
           slotDate: sa.slot.slot_date,
-          slotTime: sa.slot.slot_time,
-          mode: sa.slot.mode
+          slotId: sa.slot.id
         }
       });
     }
@@ -291,7 +293,7 @@ export class ApplicationsService {
         eventType: 'INTERVIEW_FEEDBACK_ADDED',
         timestamp: fb.created_at,
         actor: fb.hr ? { id: fb.hr.id, name: fb.hr.full_name } : undefined,
-        metadata: { result: fb.result, rating: fb.rating }
+        metadata: { rating: fb.rating }
       });
     }
 
@@ -563,7 +565,7 @@ export class ApplicationsService {
     
     // Validate authorization
     const isElevated = user.permissions?.includes('CAREER_ADMIN') || user.permissions?.includes('CAREER_REPORTS');
-    if (!isElevated && application.assigned_hr_id !== user.sub) {
+    if (!isElevated && application.assigned_hr?.id !== user.sub) {
       throw new ConflictException('Unauthorized to generate offer for this candidate');
     }
 
@@ -604,7 +606,7 @@ export class ApplicationsService {
     const application = await this.findActiveApplication(id);
     
     const isElevated = user.permissions?.includes('CAREER_ADMIN') || user.permissions?.includes('CAREER_REPORTS');
-    if (!isElevated && application.assigned_hr_id !== user.sub) {
+    if (!isElevated && application.assigned_hr?.id !== user.sub) {
       throw new ConflictException('Unauthorized');
     }
 
@@ -637,7 +639,10 @@ export class ApplicationsService {
     if (offerStatus === 'CANCELLED') appStatusToUpdate = 'WITHDRAWN';
 
     if (appStatusToUpdate && appStatusToUpdate !== application.status) {
-      await this.updateStatus(id, { status: appStatusToUpdate, reason: `Offer ${offerStatus}` }, user);
+      await this.updateStatus(id, { 
+        status: appStatusToUpdate as application_status_enum, 
+        reason: `Offer ${offerStatus}` 
+      }, user);
     } else {
        // Just emit timeline event if no application status change
        this.events.emit('ApplicationEvent', {
@@ -659,7 +664,7 @@ export class ApplicationsService {
     const summary = { total: applicationIds.length, successful: 0, failed: 0, errors: [] as any[] };
     for (const id of applicationIds) {
       try {
-        await this.updateStatus(id, { status, reason }, user);
+        await this.updateStatus(id, { status, reason: reason ?? null }, user);
         summary.successful++;
       } catch (error: any) {
         summary.failed++;

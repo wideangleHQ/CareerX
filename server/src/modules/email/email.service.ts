@@ -2,9 +2,10 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   ServiceUnavailableException,
-  OnModuleInit,
 } from '@nestjs/common';
+import type { OnModuleInit } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import type { log_status_enum } from '@prisma/client';
@@ -41,6 +42,8 @@ export interface EmailJob {
 
 @Injectable()
 export class EmailService implements OnModuleInit {
+  private readonly logger = new Logger(EmailService.name);
+
   constructor(
     private readonly repository: EmailRepository,
     private readonly prisma: PrismaService,
@@ -68,7 +71,8 @@ export class EmailService implements OnModuleInit {
 
     const slot = application.slot_assignment.slot;
     const interviewDate = slot.slot_date.toISOString().split('T')[0];
-    const interviewTime = slot.slot_time.toISOString().split('T')[1].substring(0, 5);
+    const timeParts = slot.slot_time.toISOString().split('T')[1];
+    const interviewTime = timeParts ? timeParts.substring(0, 5) : '00:00';
 
     await this.queueEmail({
       applicationId: application.id,
@@ -78,11 +82,12 @@ export class EmailService implements OnModuleInit {
         candidateName: application.candidate.full_name,
         companyName: 'PerformX',
         jobTitle: application.department.name,
-        interviewDate: interviewDate,
+        interviewDate: interviewDate ?? '',
         interviewTime: interviewTime,
         meetingLink: '',
         portalUrl: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
       },
+      attachments: [],
     });
   }
 
@@ -204,7 +209,7 @@ export class EmailService implements OnModuleInit {
       case 'hr-assignment':
         return renderHrAssignmentTemplate(dto.variables);
       default:
-        throw new Error(`Unknown email template: ${dto.template}`);
+        throw new Error(`Unknown email template: ${String(dto.template)}`);
     }
   }
 

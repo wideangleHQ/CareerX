@@ -22,7 +22,7 @@ import { parseUpdateCandidateDto } from './dto/update-candidate.dto';
 import { CandidatesService } from './candidates.service';
 import { parseCandidateQuery } from './dto/search-candidate.dto';
 
-@Controller('api/v1/candidates')
+@Controller('candidates')
 export class CandidatesController {
   constructor(private readonly candidatesService: CandidatesService) {}
 

@@ -5,7 +5,7 @@ import { CareerJwtAuthGuard } from '../../common/guards/career-jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 
-@Controller('api/v1/health')
+@Controller('health')
 export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 

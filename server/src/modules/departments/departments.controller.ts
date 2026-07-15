@@ -10,7 +10,7 @@ import type {
 } from './departments.service';
 import { parseToggleHiringDto } from './dto/toggle-hiring.dto';
 
-@Controller('api/v1/departments')
+@Controller('departments')
 export class DepartmentsController {
   constructor(private readonly departmentsService: DepartmentsService) {}
 

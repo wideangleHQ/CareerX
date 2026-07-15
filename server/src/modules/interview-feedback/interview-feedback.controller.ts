@@ -20,7 +20,7 @@ import { parseFeedbackFilterDto } from './dto/feedback-filter.dto';
 import { parseUpdateFeedbackDto } from './dto/update-feedback.dto';
 import { InterviewFeedbackService } from './interview-feedback.service';
 
-@Controller('api/v1/interview-feedback')
+@Controller('interview-feedback')
 @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
 export class InterviewFeedbackController {
   constructor(private readonly interviewFeedbackService: InterviewFeedbackService) {}

@@ -10,28 +10,28 @@ import type {
 
 export interface ToggleHiringDto {
   isHiringEnabled: boolean;
-  status?: opportunity_status_enum;
-  internalPosition?: string;
-  numberOfOpenings?: number;
-  hiringPriority?: priority_enum;
-  hiringType?: hiring_type_enum;
-  confidentialityLevel?: confidentiality_enum;
-  hiringManagerId?: string | null;
-  reportingManagerId?: string | null;
-  internalNotes?: string | null;
+  status?: opportunity_status_enum | undefined;
+  internalPosition?: string | undefined;
+  numberOfOpenings?: number | undefined;
+  hiringPriority?: priority_enum | undefined;
+  hiringType?: hiring_type_enum | undefined;
+  confidentialityLevel?: confidentiality_enum | undefined;
+  hiringManagerId?: string | null | undefined;
+  reportingManagerId?: string | null | undefined;
+  internalNotes?: string | null | undefined;
 
-  publicTitle?: string;
-  careerLevel?: career_level_enum;
-  workMode?: work_mode_enum;
-  location?: string;
-  minExperienceYears?: number;
-  maxExperienceYears?: number | null;
-  educationalQualification?: string | null;
+  publicTitle?: string | undefined;
+  careerLevel?: career_level_enum | undefined;
+  workMode?: work_mode_enum | undefined;
+  location?: string | undefined;
+  minExperienceYears?: number | undefined;
+  maxExperienceYears?: number | null | undefined;
+  educationalQualification?: string | null | undefined;
   
-  about?: string | null;
-  responsibilities?: string | null;
-  benefits?: string | null;
-  careerGrowth?: string | null;
+  about?: string | null | undefined;
+  responsibilities?: string | null | undefined;
+  benefits?: string | null | undefined;
+  careerGrowth?: string | null | undefined;
 }
 
 export function parseToggleHiringDto(value: unknown): ToggleHiringDto {

@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import type { application_status_enum } from '@prisma/client';
 import { parseRequiredText } from './create-application.dto';
 
-const STATUSES = new Set(['NEW', 'SLOT_BOOKED', 'INTERVIEWED', 'SELECTED', 'REJECTED', 'WITHDRAWN']);
+const STATUSES = new Set(['NEW', 'SLOT_BOOKED', 'INTERVIEWED', 'SHORTLISTED', 'SELECTED', 'OFFER_RELEASED', 'JOINED', 'REJECTED', 'WITHDRAWN']);
 
 export interface UpdateStatusDto {
   status: application_status_enum;

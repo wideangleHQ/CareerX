@@ -13,13 +13,13 @@ export interface QueueMetrics {
     paused: number;
   };
   performance: {
-    averageProcessingTime?: number;
-    throughputPerHour?: number;
+    averageProcessingTime?: number | undefined;
+    throughputPerHour?: number | undefined;
     oldestWaitingJob?: {
       id: string;
       age: number; // milliseconds
       data: any;
-    };
+    } | undefined;
   };
   health: 'HEALTHY' | 'DEGRADED' | 'CRITICAL';
   timestamp: string;
@@ -32,12 +32,12 @@ export interface JobDetails {
   progress: number;
   attemptsMade: number;
   attemptsTotal: number;
-  failedReason?: string;
-  stacktrace?: string[];
+  failedReason?: string | undefined;
+  stacktrace?: string[] | null | undefined;
   createdAt: Date;
-  processedOn?: Date;
-  finishedOn?: Date;
-  delay?: number;
+  processedOn?: Date | undefined;
+  finishedOn?: Date | undefined;
+  delay?: number | undefined;
 }
 
 @Injectable()
@@ -74,7 +74,7 @@ export class QueueMetricsService {
         queue.getCompletedCount(),
         queue.getFailedCount(),
         queue.getDelayedCount(),
-        queue.getPausedCount(),
+        0, // queue.getPausedCount() is not available
       ]);
 
       const counts = { waiting, active, completed, failed, delayed, paused };

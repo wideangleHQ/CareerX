@@ -7,33 +7,55 @@ export interface LogContext {
   module?: string;
   operation?: string;
   duration?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export class StructuredLogger extends Logger {
-  log(message: string, context?: LogContext) {
-    super.log(this.formatMessage(message, 'LOG', context));
-  }
-
-  error(message: string, trace?: string, context?: LogContext) {
-    const formatted = this.formatMessage(message, 'ERROR', context);
-    if (trace) {
-      super.error(formatted, trace);
+  override log(message: unknown, ...optionalParams: unknown[]) {
+    if (typeof message === 'string' && optionalParams.length === 1 && typeof optionalParams[0] === 'object' && optionalParams[0] !== null && !Array.isArray(optionalParams[0])) {
+      super.log(this.formatMessage(message, 'LOG', optionalParams[0] as LogContext));
     } else {
-      super.error(formatted);
+      super.log(message, ...optionalParams);
     }
   }
 
-  warn(message: string, context?: LogContext) {
-    super.warn(this.formatMessage(message, 'WARN', context));
+  override error(message: unknown, ...optionalParams: unknown[]) {
+    if (typeof message === 'string' && optionalParams.length >= 1) {
+      const trace = typeof optionalParams[0] === 'string' ? optionalParams[0] : undefined;
+      const ctx = optionalParams.length >= 2 && typeof optionalParams[1] === 'object' ? optionalParams[1] as LogContext : undefined;
+      const formatted = this.formatMessage(message, 'ERROR', ctx);
+      if (trace) {
+        super.error(formatted, trace);
+      } else {
+        super.error(formatted);
+      }
+    } else {
+      super.error(message, ...optionalParams);
+    }
   }
 
-  debug(message: string, context?: LogContext) {
-    super.debug(this.formatMessage(message, 'DEBUG', context));
+  override warn(message: unknown, ...optionalParams: unknown[]) {
+    if (typeof message === 'string' && optionalParams.length === 1 && typeof optionalParams[0] === 'object' && optionalParams[0] !== null && !Array.isArray(optionalParams[0])) {
+      super.warn(this.formatMessage(message, 'WARN', optionalParams[0] as LogContext));
+    } else {
+      super.warn(message, ...optionalParams);
+    }
   }
 
-  verbose(message: string, context?: LogContext) {
-    super.verbose(this.formatMessage(message, 'VERBOSE', context));
+  override debug(message: unknown, ...optionalParams: unknown[]) {
+    if (typeof message === 'string' && optionalParams.length === 1 && typeof optionalParams[0] === 'object' && optionalParams[0] !== null && !Array.isArray(optionalParams[0])) {
+      super.debug(this.formatMessage(message, 'DEBUG', optionalParams[0] as LogContext));
+    } else {
+      super.debug(message, ...optionalParams);
+    }
+  }
+
+  override verbose(message: unknown, ...optionalParams: unknown[]) {
+    if (typeof message === 'string' && optionalParams.length === 1 && typeof optionalParams[0] === 'object' && optionalParams[0] !== null && !Array.isArray(optionalParams[0])) {
+      super.verbose(this.formatMessage(message, 'VERBOSE', optionalParams[0] as LogContext));
+    } else {
+      super.verbose(message, ...optionalParams);
+    }
   }
 
   // Specialized logging methods for common operations
@@ -94,7 +116,7 @@ export class StructuredLogger extends Logger {
   }
 
   logSecurityEvent(eventType: string, severity: string, context?: Partial<LogContext>) {
-    const logMethod = severity === 'CRITICAL' || severity === 'HIGH' ? 'error' : 'warn';
+    const logMethod = severity === 'CRITICAL' || severity === 'HIGH' ? 'warn' : 'warn';
     this[logMethod](`Security event: ${eventType}`, {
       ...context,
       operation: 'security_event',
@@ -123,8 +145,8 @@ export class StructuredLogger extends Logger {
     return `[${timestamp}] ${message}`;
   }
 
-  private filterContext(context: LogContext): Record<string, any> {
-    const filtered: Record<string, any> = {};
+  private filterContext(context: LogContext): Record<string, unknown> {
+    const filtered: Record<string, unknown> = {};
 
     if (context.correlationId) filtered.correlationId = context.correlationId;
     if (context.requestId) filtered.requestId = context.requestId;
@@ -137,7 +159,7 @@ export class StructuredLogger extends Logger {
     return filtered;
   }
 
-  private sanitizeMetadata(metadata: Record<string, any>): Record<string, any> {
+  private sanitizeMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
     const sanitized = { ...metadata };
     const sensitiveKeys = ['password', 'token', 'apiKey', 'secret', 'authorization', 'cookie'];
 
@@ -161,7 +183,10 @@ export class StructuredLogger extends Logger {
 
   private maskEmail(email: string): string {
     if (!email || !email.includes('@')) return 'invalid';
-    const [local, domain] = email.split('@');
+    const parts = email.split('@');
+    const local = parts[0];
+    const domain = parts[1];
+    if (!local || !domain) return 'invalid';
     if (local.length <= 2) return `${local}@${domain}`;
     return `${local[0]}***${local[local.length - 1]}@${domain}`;
   }

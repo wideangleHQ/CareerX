@@ -6,7 +6,7 @@ import { RequirePermissions } from '../../common/decorators/permissions.decorato
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { CareerJwtPayload } from '../auth/interfaces/auth.interfaces';
 
-@Controller('api/v1/dashboard')
+@Controller('dashboard')
 @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}

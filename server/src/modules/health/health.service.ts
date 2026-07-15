@@ -59,8 +59,8 @@ export class HealthService {
     const components = [database, redis, queues, workers, emailProvider];
     if (scheduler) components.push(scheduler);
 
-    const hasUnavailable = components.some(c => c.status === 'UNAVAILABLE');
-    const hasDegraded = components.some(c => c.status === 'DEGRADED');
+    const hasUnavailable = components.some(c => c?.status === 'UNAVAILABLE');
+    const hasDegraded = components.some(c => c?.status === 'DEGRADED');
     
     const systemStatus: HealthStatus = hasUnavailable ? 'UNAVAILABLE' 
       : hasDegraded ? 'DEGRADED' 
@@ -71,11 +71,11 @@ export class HealthService {
       timestamp: new Date().toISOString(),
       uptime: Math.floor((Date.now() - this.startTime) / 1000),
       components: {
-        database,
-        redis,
-        queues,
-        workers,
-        emailProvider,
+        database: database!,
+        redis: redis!,
+        queues: queues!,
+        workers: workers!,
+        emailProvider: emailProvider!,
         ...(scheduler ? { scheduler } : {}),
       },
     };

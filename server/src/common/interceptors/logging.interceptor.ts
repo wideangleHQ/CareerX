@@ -1,13 +1,15 @@
 import {
   Injectable,
+  Logger,
+} from '@nestjs/common';
+import type {
   NestInterceptor,
   ExecutionContext,
   CallHandler,
-  Logger,
 } from '@nestjs/common';
 import { Observable, throwError } from 'rxjs';
 import { tap, catchError } from 'rxjs/operators';
-import { Request } from 'express';
+import type { Request } from 'express';
 
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {

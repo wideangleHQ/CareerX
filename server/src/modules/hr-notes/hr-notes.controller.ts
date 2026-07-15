@@ -27,7 +27,7 @@ interface HrNoteMutationResponseDto {
   data: HrNoteDto;
 }
 
-@Controller('api/v1/hr-notes')
+@Controller('hr-notes')
 @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
 export class HrNotesController {
   constructor(private readonly hrNotesService: HrNotesService) {}

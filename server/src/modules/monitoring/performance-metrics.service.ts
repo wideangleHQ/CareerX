@@ -119,7 +119,7 @@ export class PerformanceMetricsService {
   private async getApplicationMetrics() {
     const totalProcessed = await this.prisma.applications.count({
       where: {
-        status: { not: 'PENDING' },
+        status: { not: 'NEW' },
       },
     });
 
@@ -128,27 +128,16 @@ export class PerformanceMetricsService {
     };
   }
 
-  // Track security events
-  logSecurityEvent(event: Omit<SecurityEvent, 'id' | 'timestamp'>): void {
-    const securityEvent: SecurityEvent = {
-      ...event,
-      id: `sec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      timestamp: new Date(),
-    };
-
-    this.securityEvents.unshift(securityEvent);
-
-    // Keep only recent events
-    if (this.securityEvents.length > this.maxSecurityEvents) {
-      this.securityEvents.pop();
-    }
-
-    // Log critical events
-    if (event.severity === 'CRITICAL' || event.severity === 'HIGH') {
-      this.logger.warn({
-        message: 'Security event',
-        ...securityEvent,
+  // Security & Audit Metrics
+  async recordSecurityEvent(event: any) {
+    try {
+      // In a real implementation, this would persist to a security_logs table
+      this.logger.warn('Security event recorded', {
+        ...event,
+        timestamp: new Date()
       });
+    } catch (error) {
+      this.logger.error('Failed to record security event', error);
     }
   }
 

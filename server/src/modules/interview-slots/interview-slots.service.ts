@@ -174,7 +174,7 @@ export class InterviewSlotsService {
                 }
               }
             },
-            hr_employee: { select: { is_active: true } }
+            hr: { select: { is_active: true } }
           },
         });
         
@@ -182,8 +182,8 @@ export class InterviewSlotsService {
         if (slot.is_booked || !this.isFuture(slot.slot_date, slot.slot_time)) {
           throw new ConflictException('Conflict: Slot is booked or in the past');
         }
-        if (!slot.hr_employee || !slot.hr_employee.is_active) {
-          throw new ConflictException('Conflict: HR is not active');
+        if (!slot.hr || !slot.hr.is_active) {
+          throw new ConflictException('Conflict: Assigned HR is no longer active');
         }
 
         const opportunity = slot.department?.hiring_opportunities[0];
@@ -234,7 +234,7 @@ export class InterviewSlotsService {
               select: { 
                 applications: { 
                   where: { 
-                    status: { notIn: ['REJECTED', 'JOINED', 'WITHDRAWN', 'ARCHIVED'] },
+                    status: { notIn: ['REJECTED', 'JOINED', 'WITHDRAWN'] },
                     deleted_at: null 
                   } 
                 } 
@@ -254,7 +254,7 @@ export class InterviewSlotsService {
           return a.id.localeCompare(b.id); // Deterministic tie-breaking
         });
 
-        const selectedHrId = hrUsers[0].id;
+        const selectedHrId = hrUsers[0]!.id;
 
         const created = await tx.slot_assignments.create({
           data: {

@@ -36,10 +36,12 @@ export class InterviewReminderCron {
           // Only process interviews that haven't been reminded
           NOT: {
             slot_assignment: {
-              email_logs: {
-                some: {
-                  template: 'INTERVIEW_REMINDER',
-                  status: 'SENT',
+              application: {
+                email_logs: {
+                  some: {
+                    template: 'INTERVIEW_REMINDER',
+                    status: 'SENT',
+                  }
                 }
               }
             }
@@ -68,6 +70,13 @@ export class InterviewReminderCron {
 
         const application = assignment.application;
         const candidate = application.candidate;
+        
+        if (!slot.slot_date || !slot.slot_time || !application.department) continue;
+        
+        const dateStr = slot.slot_date.toISOString().split('T')[0] ?? '';
+        const timeParts = slot.slot_time.toISOString().split('T')[1];
+        const timeStr = timeParts ? timeParts.substring(0, 5) : '00:00';
+        const deptName = application.department.name;
 
         if (candidate?.email) {
           // Create email log first
@@ -92,16 +101,16 @@ export class InterviewReminderCron {
                   <p>Hello ${candidate.full_name},</p>
                   <p>This is a friendly reminder that you have an interview scheduled for tomorrow:</p>
                   <div style="background-color: #e8f5e8; padding: 15px; border-radius: 5px; margin: 15px 0;">
-                    <strong>📅 Date:</strong> ${slot.slot_date.toISOString().split('T')[0]}<br>
-                    <strong>🕐 Time:</strong> ${slot.slot_time.toISOString().split('T')[1].substring(0, 5)}<br>
-                    <strong>🏢 Department:</strong> ${application.department.name}
+                    <strong>📅 Date:</strong> ${dateStr}<br>
+                    <strong>🕐 Time:</strong> ${timeStr}<br>
+                    <strong>🏢 Department:</strong> ${deptName}
                   </div>
                   <p>Please arrive a few minutes early and bring any required documents.</p>
                   <p>We look forward to meeting with you!</p>
                   <p>Best regards,<br>CareerX Team</p>
                 </div>
               `,
-              text: `Interview Reminder\n\nHello ${candidate.full_name},\n\nThis is a friendly reminder that you have an interview scheduled for tomorrow:\n\nDate: ${slot.slot_date.toISOString().split('T')[0]}\nTime: ${slot.slot_time.toISOString().split('T')[1].substring(0, 5)}\nDepartment: ${application.department.name}\n\nPlease arrive a few minutes early and bring any required documents.\n\nWe look forward to meeting with you!\n\nBest regards,\nCareerX Team`,
+              text: `Interview Reminder\n\nHello ${candidate.full_name},\n\nThis is a friendly reminder that you have an interview scheduled for tomorrow:\n\nDate: ${dateStr}\nTime: ${timeStr}\nDepartment: ${deptName}\n\nPlease arrive a few minutes early and bring any required documents.\n\nWe look forward to meeting with you!\n\nBest regards,\nCareerX Team`,
             },
             attachments: [],
           }, {
@@ -116,7 +125,7 @@ export class InterviewReminderCron {
               application_id: assignment.application_id,
               recipient_hr_id: slot.hr_id,
               channel: 'IN_APP',
-              message: `Reminder: Interview with ${candidate.full_name} tomorrow at ${slot.slot_time.toISOString().split('T')[1].substring(0, 5)}`,
+              message: `Reminder: Interview with ${candidate.full_name} tomorrow at ${timeStr}`,
               status: 'QUEUED',
             }
           });

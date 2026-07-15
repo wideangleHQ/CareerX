@@ -8,7 +8,7 @@ import { parseNotificationFilterDto } from './dto/notification-filter.dto';
 import { NotificationsService } from './notifications.service';
 import type { NotificationDto, NotificationListResponseDto } from './notifications.service';
 
-@Controller('api/v1/notifications')
+@Controller('notifications')
 @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
 @RequirePermissions('CAREER_VIEW')
 export class NotificationsController {

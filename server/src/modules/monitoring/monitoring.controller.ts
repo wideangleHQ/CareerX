@@ -6,7 +6,7 @@ import { QueueMetricsService } from './queue-metrics.service';
 import { PerformanceMetricsService } from './performance-metrics.service';
 import { OperationsDashboardService } from './operations-dashboard.service';
 
-@Controller('api/v1/monitoring')
+@Controller('monitoring')
 @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
 @RequirePermissions('CAREER_ADMIN')
 export class MonitoringController {
