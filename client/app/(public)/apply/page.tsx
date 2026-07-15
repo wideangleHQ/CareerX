@@ -1,14 +1,10 @@
-import React from 'react';
-import { ApplicationForm } from '@/src/features/candidate-portal/components/ApplicationForm';
-
-export const metadata = {
-  title: 'Apply for Open Roles | CareerX Portal',
-};
+import { Suspense } from "react";
+import ApplicationForm from "@/src/features/candidate-portal/components/ApplicationForm";
 
 export default function ApplyPage() {
   return (
-    <div className="flex-1 flex items-center justify-center p-6 bg-neutral-50/40 w-full min-h-[calc(100vh-4rem)]">
+    <Suspense fallback={<div>Loading...</div>}>
       <ApplicationForm />
-    </div>
+    </Suspense>
   );
 }

@@ -13,10 +13,13 @@ export const applicationsApi = {
     fullName: string;
     email: string;
     mobileNumber: string;
-    whatsappNumber?: string;
+    whatsappNumber?: string | null;
     departmentId: string;
+    opportunityId?: string | null;
     selfDescription: string;
+    experienceYears: number;
     resumePath: string;
+    previousOrgProofPath?: string | null;
   }): Promise<{ success: boolean; data: Application }> => {
     const { data } = await axiosClient.post('/api/v1/applications', payload);
     return data;
