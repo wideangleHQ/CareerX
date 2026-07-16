@@ -20,9 +20,11 @@ import { HealthModule } from './modules/health/health.module';
 import { MonitoringModule } from './modules/monitoring/monitoring.module';
 import { CorrelationMiddleware } from './common/middleware/correlation.middleware';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+import { QueueConfigModule } from './common/queue/queue-config.module';
 
 @Module({
   imports: [
+    QueueConfigModule,
     AuthModule,
     CareerEventsModule,
     DashboardModule,

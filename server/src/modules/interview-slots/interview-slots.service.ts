@@ -98,7 +98,7 @@ export class InterviewSlotsService {
             department_id: dto.departmentId,
             slot_date: slotDate,
             slot_time: slotTime,
-            is_recurring: true,
+            is_recurring: dto.isRecurring,
           })),
       );
 
@@ -371,11 +371,13 @@ export class InterviewSlotsService {
   private generateDates(dto: BulkGenerateSlotsDto): Date[] {
     const dates: Date[] = [];
     const current = new Date(dto.startDate);
+    const allowedDays = dto.daysOfWeek ? new Set(dto.daysOfWeek) : null;
+
     while (current <= dto.endDate && dates.length < 370) {
-      dates.push(new Date(current));
-      if (dto.frequency === 'DAILY') current.setUTCDate(current.getUTCDate() + 1);
-      else if (dto.frequency === 'WEEKLY') current.setUTCDate(current.getUTCDate() + 7);
-      else current.setUTCMonth(current.getUTCMonth() + 1);
+      if (!allowedDays || allowedDays.has(current.getUTCDay())) {
+        dates.push(new Date(current));
+      }
+      current.setUTCDate(current.getUTCDate() + 1);
     }
     return dates;
   }

@@ -18,16 +18,21 @@ export interface PerformxDepartment {
 export class PerformxClient {
   private readonly baseUrl = process.env.PERFORMX_API_URL ?? 'https://api.ruchiperformx.in';
   private readonly internalApiKey = process.env.PERFORMX_INTERNAL_API_KEY ?? '';
-  private readonly timeoutMs = 2000;
+  private readonly timeoutMs = 10000; // TEMPORARILY INCREASED FOR DEBUGGING
 
   async verifyToken(token: string): Promise<PerformxVerifyResponse> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
-      console.log('Base URL:', this.baseUrl);
-console.log('Token exists:', !!token);
-console.log('Token length:', token?.length);
+      console.log(JSON.stringify({
+        event: 'PerformxClient_Verify_Request',
+        PERFORMX_API_URL: this.baseUrl,
+        requestUrl: `${this.baseUrl}/api/v1/auth/verify`,
+        tokenExists: !!token,
+        tokenLength: token?.length,
+      }));
+
       const response = await fetch(`${this.baseUrl}/api/v1/auth/verify`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -35,13 +40,23 @@ console.log('Token length:', token?.length);
         signal: controller.signal,
       });
 
+      console.log(JSON.stringify({
+        event: 'PerformxClient_Verify_Response',
+        status: response.status,
+      }));
+
       if (response.status === 401 || response.status === 403) {
         throw new UnauthorizedException('Unauthorized');
       }
 
       if (!response.ok) {
-        console.log(await response.text());
-        
+        const bodyText = await response.text();
+        console.error(JSON.stringify({
+          event: 'PerformxClient_Verify_ErrorResponse',
+          status: response.status,
+          body: bodyText,
+        }));
+        throw new ServiceUnavailableException('External Dependency Unavailable');
       }
 
       const data = (await response.json()) as Partial<PerformxVerifyResponse>;
@@ -62,7 +77,13 @@ console.log('Token length:', token?.length);
   departmentName: data.departmentName ?? null,
   careerAccess: data.careerAccess,
 };
-    } catch (error) {
+    } catch (error: any) {
+      console.error(JSON.stringify({
+        event: 'PerformxClient_Verify_Exception',
+        errorName: error?.name,
+        errorMessage: error?.message,
+        isAbortError: error?.name === 'AbortError',
+      }));
       if (error instanceof UnauthorizedException || error instanceof ServiceUnavailableException) {
         throw error;
       }

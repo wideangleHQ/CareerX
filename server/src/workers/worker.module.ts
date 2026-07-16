@@ -12,39 +12,6 @@ import { WorkerHealthService } from './worker-health.service';
   imports: [
     PrismaModule,
     RedisModule,
-    BullModule.forRoot({
-      connection: (() => {
-        const redisUrl = process.env.REDIS_URL;
-        if (redisUrl) {
-          const parsed = new URL(redisUrl);
-          return {
-            host: parsed.hostname,
-            port: parseInt(parsed.port || '6379', 10),
-            password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
-            username: parsed.username && parsed.username !== 'default' ? parsed.username : undefined,
-            tls: parsed.protocol === 'rediss:' ? {} : undefined,
-            maxRetriesPerRequest: null, // Required by BullMQ workers
-            enableReadyCheck: false,
-          };
-        }
-        return {
-          host: 'localhost',
-          port: 6379,
-          maxRetriesPerRequest: null,
-          enableReadyCheck: false,
-        };
-      })(),
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 2000,
-        },
-        removeOnComplete: 100, // Keep last 100 successful jobs
-        removeOnFail: 50, // Keep last 50 failed jobs for debugging
-      },
-      // 'settings' was removed: BullMQ advanced settings are not part of the client options
-    }),
     BullModule.registerQueue({ 
       name: 'email',
       defaultJobOptions: {
