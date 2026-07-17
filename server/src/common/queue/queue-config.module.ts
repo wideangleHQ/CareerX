@@ -9,14 +9,9 @@ import { BullModule } from '@nestjs/bullmq';
         const redisUrl = process.env.REDIS_URL;
 
         if (!redisUrl) {
-          if (process.env.NODE_ENV === 'production') {
-            throw new Error(
-              'FATAL: REDIS_URL is not defined. Cannot start in production without Redis.',
-            );
-          }
-
-          Logger.warn(
-            'REDIS_URL not set — BullMQ using localhost:6379 (development only)',
+          Logger.error(
+            'REDIS_URL is not set. BullMQ queues will not function. ' +
+            'Set REDIS_URL in your environment (Railway dashboard for production).',
             'QueueConfigModule',
           );
 
@@ -26,6 +21,8 @@ import { BullModule } from '@nestjs/bullmq';
               port: 6379,
               maxRetriesPerRequest: null,
               enableReadyCheck: false,
+              retryStrategy: () => null,
+              lazyConnect: true,
             },
             defaultJobOptions: {
               attempts: 3,

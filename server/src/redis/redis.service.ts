@@ -19,8 +19,8 @@ export class RedisService implements OnModuleDestroy {
 
   constructor() {
     this.url = process.env.REDIS_URL;
-    if (!this.url && process.env.NODE_ENV === 'production') {
-      throw new Error('FATAL: REDIS_URL is not defined. Cannot start RedisService in production without Redis.');
+    if (!this.url) {
+      console.warn('[RedisService] REDIS_URL is not set. Redis operations will return null.');
     }
   }
 
