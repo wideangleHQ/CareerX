@@ -22,34 +22,33 @@ export interface DepartmentListItem {
 
 export interface HiringDepartmentItem {
   id: string; // The department ID (used by frontend for applications)
-  name: string; // The public_t
-  // itle for backwards compatibility
-  
+  name: string; // The public_title for backwards compatibility
+
   // Rich public details
-  opportunityId?: string | undefined;
-  departmentName?: string | undefined;
-  careerLevel?: string | undefined;
-  employmentType?: string | undefined;
-  workMode?: string | undefined;
-  location?: string | undefined;
-  experienceRange?: string | undefined;
-  salaryRange?: string | undefined;
-  shortDescription?: string | undefined;
-  primarySkills?: string[] | undefined;
-  requiredSkills?: string[] | undefined;
-  preferredSkills?: string[] | undefined;
-  
-  about?: string | undefined;
-  responsibilities?: string | undefined;
-  benefits?: string | undefined;
-  careerGrowth?: string | undefined;
-  educationalQualification?: string | undefined;
-  numberOfOpenings?: number | undefined;
-  publishedAt?: Date | undefined;
-  applicationDeadline?: Date | undefined;
-  resumeRequired?: boolean | undefined;
-  employmentProofRequired?: boolean | undefined;
-  isAcceptingApplications?: boolean | undefined;
+  opportunityId?: string;
+  departmentName?: string;
+  careerLevel?: string;
+  employmentType?: string;
+  workMode?: string;
+  location?: string;
+  experienceRange?: string;
+  salaryRange?: string;
+  shortDescription?: string;
+  primarySkills?: string[];
+  requiredSkills?: string[];
+  preferredSkills?: string[];
+
+  about?: string;
+  responsibilities?: string;
+  benefits?: string;
+  careerGrowth?: string;
+  educationalQualification?: string;
+  numberOfOpenings?: number;
+  publishedAt?: Date;
+  applicationDeadline?: Date;
+  resumeRequired?: boolean;
+  employmentProofRequired?: boolean;
+  isAcceptingApplications?: boolean;
 }
 
 export interface DepartmentSyncSummary {
@@ -71,8 +70,8 @@ export class DepartmentsService {
 
   async getHiringDepartments(query: any = {}): Promise<HiringDepartmentItem[]> {
     // Dynamic Cache Key based on query params to prevent caching filtered results as default
-    const cacheKey = Object.keys(query).length > 0 
-      ? `${HIRING_DEPARTMENTS_CACHE_KEY}:${Buffer.from(JSON.stringify(query)).toString('base64')}` 
+    const cacheKey = Object.keys(query).length > 0
+      ? `${HIRING_DEPARTMENTS_CACHE_KEY}:${Buffer.from(JSON.stringify(query)).toString('base64')}`
       : HIRING_DEPARTMENTS_CACHE_KEY;
 
     const cached = await this.redis.get(cacheKey);
@@ -129,8 +128,8 @@ export class DepartmentsService {
           created_at: true,
           department_id: true,
           department: { select: { name: true, is_hiring_enabled: true } },
-          opportunity_skills: { 
-            include: { skill: true }
+          opportunity_skills: {
+            select: { is_preferred: true, skill: { select: { name: true } } }
           }
         },
         orderBy: query.sort === 'oldest' ? { created_at: 'asc' } : { created_at: 'desc' },
@@ -139,7 +138,7 @@ export class DepartmentsService {
       });
 
       // Strict Public Whitelist Mapping
-      const enrichedDepartments: HiringDepartmentItem[] = opportunities
+      const enrichedDepartments = opportunities
         .filter(opp => opp.department?.is_hiring_enabled) // Double check department is still enabled
         .map((opp) => {
           const now = new Date();
@@ -148,7 +147,7 @@ export class DepartmentsService {
           return {
             id: opp.department_id, // Legacy compatibility: use department_id as the primary identifier
             name: opp.public_title, // Legacy compatibility
-            
+
             opportunityId: opp.id,
             departmentName: opp.department?.name,
             careerLevel: opp.career_level || undefined,
@@ -158,10 +157,10 @@ export class DepartmentsService {
             experienceRange: opp.max_experience_years ? `${opp.min_experience_years} - ${opp.max_experience_years} Years` : `${opp.min_experience_years}+ Years`,
             salaryRange: (opp.min_salary && opp.max_salary) ? `${opp.min_salary} - ${opp.max_salary}` : undefined,
             shortDescription: opp.about?.substring(0, 150) || undefined,
-            
+
             requiredSkills: opp.opportunity_skills.filter(os => !os.is_preferred).map(os => os.skill.name),
             preferredSkills: opp.opportunity_skills.filter(os => os.is_preferred).map(os => os.skill.name),
-            
+
             about: opp.about || undefined,
             responsibilities: opp.responsibilities || undefined,
             benefits: opp.benefits || undefined,
@@ -174,37 +173,33 @@ export class DepartmentsService {
             employmentProofRequired: opp.employment_proof_required,
             isAcceptingApplications: !isClosed,
           };
-      });
+        });
 
       await this.redis.set(cacheKey, JSON.stringify(enrichedDepartments), HIRING_DEPARTMENTS_CACHE_TTL_SECONDS);
-      return enrichedDepartments;
+      return enrichedDepartments as HiringDepartmentItem[];
     } catch {
       throw new InternalServerErrorException('Internal Server Error');
     }
   }
 
   async getAllDepartments(): Promise<DepartmentListItem[]> {
-    const localDepts = await this.prisma.departments.findMany({
-      select: { id: true, name: true, is_hiring_enabled: true, synced_at: true },
-      orderBy: { name: 'asc' },
-    });
-
-    if (localDepts.length > 0) {
-      return localDepts.map((d) => ({
-        id: d.id,
-        name: d.name,
-        isHiringEnabled: d.is_hiring_enabled,
-        syncedAt: d.synced_at,
-      }));
-    }
-
+    // Departments are sourced from PerformX (Single Source of Truth).
+    // Local DB stores only department_id + is_hiring_enabled overrides.
     const performxDepts = await this.departmentSync.getDepartments();
-    return performxDepts.map((dept) => ({
-      id: dept.id,
-      name: dept.name,
-      isHiringEnabled: false,
-      syncedAt: new Date(),
-    }));
+    const localOverrides = await this.prisma.departments.findMany({
+      select: { id: true, is_hiring_enabled: true, synced_at: true },
+    });
+    const overrideMap = new Map(localOverrides.map((d) => [d.id, d]));
+
+    return performxDepts.map((dept) => {
+      const local = overrideMap.get(dept.id);
+      return {
+        id: dept.id,
+        name: dept.name,
+        isHiringEnabled: local?.is_hiring_enabled ?? false,
+        syncedAt: local?.synced_at ?? new Date(),
+      };
+    });
   }
 
   async toggleHiring(id: string, dto: import('./dto/toggle-hiring.dto').ToggleHiringDto): Promise<DepartmentListItem> {
@@ -232,7 +227,7 @@ export class DepartmentsService {
             where: { department_id: id },
             select: { id: true }
           });
-          
+
           const oppData = {
             department_id: id,
             internal_position: dto.internalPosition || existing.name,
@@ -243,7 +238,7 @@ export class DepartmentsService {
             hiring_manager_id: dto.hiringManagerId,
             reporting_manager_id: dto.reportingManagerId,
             internal_notes: dto.internalNotes,
-            
+
             public_title: dto.publicTitle || existing.name,
             career_level: dto.careerLevel || 'MID_LEVEL',
             work_mode: dto.workMode || 'ON_SITE',
@@ -251,7 +246,7 @@ export class DepartmentsService {
             min_experience_years: dto.minExperienceYears || 0,
             max_experience_years: dto.maxExperienceYears,
             educational_qualification: dto.educationalQualification,
-            
+
             about: dto.about,
             responsibilities: dto.responsibilities,
             benefits: dto.benefits,
@@ -296,46 +291,20 @@ export class DepartmentsService {
   }
 
   async syncFromPerformx(): Promise<DepartmentSyncSummary> {
-    console.log('========== DEPARTMENT SYNC STARTED ==========');
     await this.breaker.assertClosed();
 
     try {
+      // Refresh the PerformX departments cache; no local DB upsert of master data.
       const result = await this.departmentSync.refreshCache();
-console.log('Refresh Cache Result:', result);
-
-const departments = await this.departmentSync.getDepartments();
-
-console.log('Departments fetched:', departments.length);
-console.log('First Department:', departments[0]);
-console.log('Starting Prisma Transaction...');
-
-      await this.prisma.$transaction(
-        departments.map((dept) =>
-          this.prisma.departments.upsert({
-            where: { id: dept.id },
-            update: { name: dept.name, synced_at: new Date() },
-            create: {
-              id: dept.id,
-              name: dept.name,
-              is_hiring_enabled: false,
-              synced_at: new Date(),
-            },
-          }),
-        ),
-      );
-      console.log('Prisma Transaction Completed Successfully');
-
       await this.redis.del(HIRING_DEPARTMENTS_CACHE_KEY);
       await this.breaker.recordSuccess();
       return { synced: result.synced };
     } catch (error) {
-  console.error('==========================');
-  console.error('Department Sync Failed');
-  console.error(error);
-  console.error('==========================');
-
-  throw error;
-      //throw new InternalServerErrorException('Internal Server Error');
+      if (error instanceof ServiceUnavailableException) {
+        await this.breaker.recordFailure();
+        throw error;
+      }
+      throw new InternalServerErrorException('Internal Server Error');
     }
   }
 }

@@ -8,7 +8,7 @@ type RedisValue = string | null;
 
 @Injectable()
 export class RedisService implements OnModuleDestroy {
-  private readonly url = process.env.REDIS_URL;
+  private readonly url: string | undefined;
   private socket: Socket | null = null;
   private connecting: Promise<Socket> | null = null;
   private buffer = Buffer.alloc(0);
@@ -16,6 +16,13 @@ export class RedisService implements OnModuleDestroy {
     resolve: (value: unknown) => void;
     reject: (error: Error) => void;
   }> = [];
+
+  constructor() {
+    this.url = process.env.REDIS_URL;
+    if (!this.url && process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: REDIS_URL is not defined. Cannot start RedisService in production without Redis.');
+    }
+  }
 
   async get(key: string): Promise<RedisValue> {
     const value = await this.safeCommand(['GET', key]);

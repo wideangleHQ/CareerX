@@ -7,50 +7,60 @@ import { BullModule } from '@nestjs/bullmq';
     BullModule.forRootAsync({
       useFactory: () => {
         const redisUrl = process.env.REDIS_URL;
-        
-        if (redisUrl) {
-          const parsed = new URL(redisUrl);
+
+        if (!redisUrl) {
+          if (process.env.NODE_ENV === 'production') {
+            throw new Error(
+              'FATAL: REDIS_URL is not defined. Cannot start in production without Redis.',
+            );
+          }
+
+          Logger.warn(
+            'REDIS_URL not set — BullMQ using localhost:6379 (development only)',
+            'QueueConfigModule',
+          );
+
           return {
             connection: {
-              host: parsed.hostname,
-              port: parseInt(parsed.port || '6379', 10),
-              password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
-              username: parsed.username && parsed.username !== 'default' ? parsed.username : undefined,
-              tls: parsed.protocol === 'rediss:' ? {} : undefined,
+              host: 'localhost',
+              port: 6379,
               maxRetriesPerRequest: null,
               enableReadyCheck: false,
             },
             defaultJobOptions: {
               attempts: 3,
-              backoff: {
-                type: 'exponential',
-                delay: 2000,
-              },
+              backoff: { type: 'exponential', delay: 2000 },
               removeOnComplete: 100,
               removeOnFail: 50,
             },
           };
         }
 
-        // Extremely severe logging so this isn't missed in production
-        Logger.error(
-          'CRITICAL: REDIS_URL is not defined in the environment. BullMQ is falling back to localhost:6379, which will cause connection loops in production!',
+        const parsed = new URL(redisUrl);
+        const isTls = parsed.protocol === 'rediss:';
+
+        Logger.log(
+          `BullMQ connecting to ${parsed.hostname}:${parsed.port || (isTls ? 6380 : 6379)} (TLS: ${isTls})`,
           'QueueConfigModule',
         );
 
         return {
           connection: {
-            host: 'localhost',
-            port: 6379,
+            host: parsed.hostname,
+            port: parseInt(parsed.port || (isTls ? '6380' : '6379'), 10),
+            password: parsed.password ? decodeURIComponent(parsed.password) : undefined,
+            username:
+              parsed.username && parsed.username !== 'default'
+                ? decodeURIComponent(parsed.username)
+                : undefined,
+            tls: isTls ? {} : undefined,
             maxRetriesPerRequest: null,
             enableReadyCheck: false,
+            family: 4,
           },
           defaultJobOptions: {
             attempts: 3,
-            backoff: {
-              type: 'exponential',
-              delay: 2000,
-            },
+            backoff: { type: 'exponential', delay: 2000 },
             removeOnComplete: 100,
             removeOnFail: 50,
           },
