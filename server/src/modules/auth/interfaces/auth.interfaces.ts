@@ -3,6 +3,7 @@ export interface CareerJwtPayload {
   email: string;
   departmentId: string | null;
   permissions: string[];
+  canAccessCareerHR?: boolean | undefined;
   iat?: number;
   exp?: number;
 }
@@ -21,6 +22,7 @@ export interface RefreshTokenRecord {
   email: string;
   departmentId: string | null;
   permissions: string[];
+  canAccessCareerHR?: boolean | undefined;
 }
 
 export interface AuthSuccessResponse {
@@ -32,5 +34,6 @@ export interface AuthSuccessResult {
   accessToken: string;
   refreshToken: string;
   permissions: string[];
+  canAccessCareerHR: boolean;
   response: AuthSuccessResponse;
 }

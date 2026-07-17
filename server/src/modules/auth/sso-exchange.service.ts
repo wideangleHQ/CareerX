@@ -87,97 +87,50 @@ export class SSOExchangeService {
   // unblocked without weakening production security.
   // ────────────────────────────────────────────────────────────────────────────
   preVerifyPerformxJwt(token: string): void {
-  console.log("========== preVerifyPerformxJwt ==========");
+    const secret = process.env.PERFORMX_JWT_SECRET;
+    if (!secret || secret.trim().length === 0) return;
 
-  const secret = process.env.PERFORMX_JWT_SECRET;
-  console.log("Secret Exists:", !!secret);
+    const parts = token.split('.');
+    if (parts.length !== 3) throw new UnauthorizedException('Unauthorized');
 
-  if (!secret || secret.trim().length === 0) {
-    console.log("Skipping local verification");
-    return;
+    const [encodedHeader, encodedBody, signature] = parts;
+    if (!signature) throw new UnauthorizedException('Unauthorized');
+
+    let header: { alg?: string };
+    try {
+      header = JSON.parse(base64UrlDecode(encodedHeader!));
+    } catch {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
+    if (header.alg !== 'HS256') throw new UnauthorizedException('Unauthorized');
+
+    const expected = createHmac('sha256', secret)
+      .update(`${encodedHeader}.${encodedBody}`)
+      .digest('base64url');
+
+    const receivedBuf = Buffer.from(signature, 'base64url');
+    const expectedBuf = Buffer.from(expected, 'base64url');
+
+    if (
+      receivedBuf.length !== expectedBuf.length ||
+      !timingSafeEqual(receivedBuf, expectedBuf)
+    ) {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
+    let claims: PerformxJwtClaims;
+    try {
+      claims = JSON.parse(base64UrlDecode(encodedBody!));
+    } catch {
+      throw new UnauthorizedException('Unauthorized');
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    if (!claims.exp || claims.exp <= now) {
+      throw new UnauthorizedException('Unauthorized');
+    }
   }
-
-  const parts = token.split(".");
-  console.log("JWT Parts:", parts.length);
-
-  if (parts.length !== 3) {
-    console.log("FAILED -> Invalid JWT Format");
-    throw new UnauthorizedException("Invalid JWT Format");
-  }
-
-  const [encodedHeader, encodedBody, signature] = parts;
-  if (!signature) {
-    console.log("FAILED -> Signature Missing");
-    throw new UnauthorizedException("Signature Missing");
-  }
-
-  let header: { alg?: string };
-
-  try {
-    // encodedHeader is guaranteed to exist because we checked parts.length === 3 above,
-    // but TypeScript still treats it as possibly undefined. Use a non-null assertion.
-    header = JSON.parse(base64UrlDecode(encodedHeader!));
-    console.log("Header:", header);
-  } catch {
-    console.log("FAILED -> Header Parse");
-    throw new UnauthorizedException("Header Parse");
-  }
-
-  if (header.alg !== "HS256") {
-    console.log("FAILED -> Algorithm", header.alg);
-    throw new UnauthorizedException("Algorithm");
-  }
-
-  console.log("Checking Signature...");
-
-  const expected = createHmac("sha256", secret)
-    .update(`${encodedHeader}.${encodedBody}`)
-    .digest("base64url");
-
-  console.log("Expected:", expected);
-  console.log("Received:", signature);
-
-  // signature/expected are base64url-encoded strings; decode with the same
-  // encoding so timingSafeEqual compares raw bytes.
-  const receivedBuf = Buffer.from(signature, 'base64url');
-  const expectedBuf = Buffer.from(expected, 'base64url');
-
-  if (
-    receivedBuf.length !== expectedBuf.length ||
-    !timingSafeEqual(receivedBuf, expectedBuf)
-  ) {
-    console.log("FAILED -> Signature");
-    throw new UnauthorizedException("Signature");
-  }
-
-  console.log("Signature OK");
-
-  let claims: PerformxJwtClaims;
-
-  try {
-    // encodedBody is guaranteed to exist because we checked parts.length === 3 above,
-    // but TypeScript still treats it as possibly undefined. Use a non-null assertion.
-    claims = JSON.parse(base64UrlDecode(encodedBody!));
-    console.log("Claims:", claims);
-  } catch {
-    console.log("FAILED -> Payload");
-    throw new UnauthorizedException("Payload");
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-
-  console.log("Now:", now);
-  console.log("Exp:", claims.exp);
-
-  if (!claims.exp || claims.exp <= now) {
-    console.log("FAILED -> Expired");
-    throw new UnauthorizedException("Expired");
-  }
-
-  console.log("Expiry OK");
-
-  console.log("========== Verification Complete ==========");
-}
 
   // ────────────────────────────────────────────────────────────────────────────
   // STEP 3 — Remote verification + Step 4 — HR access validation
@@ -208,7 +161,8 @@ export class SSOExchangeService {
   //   - A non-HR user somehow holds a valid PerformX JWT
   //   - The role has no permissions mapped in hr_role_permissions
   // ────────────────────────────────────────────────────────────────────────────
-  validateHRResult(permissions: string[]): void {
+  validateHRResult(permissions: string[], canAccessCareerHR?: boolean): void {
+    if (canAccessCareerHR) return;
     if (permissions.length === 0) {
       throw new ForbiddenException('Forbidden');
     }

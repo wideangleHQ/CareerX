@@ -32,30 +32,25 @@ export class AuthService {
     accessToken: string;
     refreshToken: string;
     permissions: string[];
+    canAccessCareerHR: boolean;
     response: AuthSuccessResponse;
   }> {
-    console.log("========== AuthService.exchange ==========");
+    const user = await this.verifyPerformxToken(performxToken);
+    let permissions = await this.getPermissions(user.role);
 
-console.log("A. Verifying PerformX Token");
-const user = await this.verifyPerformxToken(performxToken);
+    if (user.careerAccess && permissions.length === 0) {
+      permissions = await this.getAllHRPermissions();
+    }
 
-console.log("Verified User:", user);
+    const session = await this.issueSession({
+      sub: user.userId,
+      email: user.email,
+      departmentId: user.departmentId ?? null,
+      permissions,
+      canAccessCareerHR: user.careerAccess || undefined,
+    });
 
-console.log("B. Loading Permissions");
-const permissions = await this.getPermissions(user.role);
-
-console.log("Permissions:", permissions);
-
-console.log("C. Creating Session");
-const session = await this.issueSession({
-  sub: user.userId,
-  email: user.email,
-  departmentId: user.departmentId ?? null,
-  permissions,
-});
-
-console.log("Session Created");
-    return { ...session, permissions };
+    return { ...session, permissions, canAccessCareerHR: user.careerAccess };
   }
 
   async refresh(refreshToken: string): Promise<{
@@ -79,7 +74,13 @@ console.log("Session Created");
     }
 
     await this.redis.del(key);
-    return this.issueSession(record);
+    return this.issueSession({
+      sub: record.sub,
+      email: record.email,
+      departmentId: record.departmentId,
+      permissions: record.permissions,
+      canAccessCareerHR: record.canAccessCareerHR,
+    });
   }
 
   async logout(refreshToken: string | null): Promise<AuthSuccessResponse> {
@@ -133,39 +134,45 @@ console.log("Session Created");
     }
   }
 
+  private async getAllHRPermissions(): Promise<string[]> {
+    try {
+      const rows = await this.prisma.hr_role_permissions.findMany({
+        select: { permission: true },
+        distinct: ['permission'],
+      });
+      return rows.map((row) => row.permission);
+    } catch {
+      throw new ServiceUnavailableException('External Dependency Unavailable');
+    }
+  }
+
   private async issueSession(payload: CareerJwtPayload): Promise<{
     accessToken: string;
     refreshToken: string;
     response: AuthSuccessResponse;
   }> {
-    console.log("1. Signing Career JWT");
+    const accessToken = signCareerJwt(payload, AUTH_TTL_SECONDS.access);
+    const refreshToken = generateOpaqueToken();
 
-const accessToken = signCareerJwt(payload, AUTH_TTL_SECONDS.access);
+    const refreshRecord: RefreshTokenRecord = {
+      sub: payload.sub,
+      email: payload.email,
+      departmentId: payload.departmentId,
+      permissions: payload.permissions,
+      canAccessCareerHR: payload.canAccessCareerHR,
+    };
 
-console.log("2. Career JWT Signed");
-
-const refreshToken = generateOpaqueToken();
-
-console.log("3. Refresh Token Generated");
-
-console.log("Redis Key:", AUTH_REDIS_KEYS.refresh(refreshToken));
-
-const stored = await this.redis.set(
-  AUTH_REDIS_KEYS.refresh(refreshToken),
-  JSON.stringify(payload satisfies RefreshTokenRecord),
-  AUTH_TTL_SECONDS.refresh,
-);
-
-console.log("Redis Result:", stored);
+    const stored = await this.redis.set(
+      AUTH_REDIS_KEYS.refresh(refreshToken),
+      JSON.stringify(refreshRecord),
+      AUTH_TTL_SECONDS.refresh,
+    );
 
     if (!stored) {
-      console.log("Redis SET Failed");
       throw new ServiceUnavailableException(
         'External Dependency Unavailable',
       );
     }
-
-    console.log("4. Session Stored");
 
     return {
       accessToken,

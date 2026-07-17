@@ -27,6 +27,7 @@ export interface User {
   email: string;
   departmentId: string | null;
   permissions: PermissionType[];
+  canAccessCareerHR?: boolean;
 }
 
 export interface Department {

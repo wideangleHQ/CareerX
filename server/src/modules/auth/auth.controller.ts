@@ -25,23 +25,11 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ExchangeResponseDto> {
-    console.log("========== SSO Exchange Started ==========");
-
-const performxToken = this.ssoExchangeService.resolveIncomingToken(request);
-console.log("✅ Step 1 - Token Resolved");
-
-this.ssoExchangeService.preVerifyPerformxJwt(performxToken);
-console.log("✅ Step 2 - Pre Verification Passed");
-
-const result = await this.ssoExchangeService.exchangeWithPerformx(performxToken);
-console.log("✅ Step 3 - AuthService.exchange() Completed");
-
-this.ssoExchangeService.validateHRResult(result.permissions);
-console.log("✅ Step 4 - Permission Validation Passed");
-
-setAuthCookies(response, result.accessToken, result.refreshToken);
-console.log("✅ Step 5 - Cookies Issued");
-    
+    const performxToken = this.ssoExchangeService.resolveIncomingToken(request);
+    this.ssoExchangeService.preVerifyPerformxJwt(performxToken);
+    const result = await this.ssoExchangeService.exchangeWithPerformx(performxToken);
+    this.ssoExchangeService.validateHRResult(result.permissions, result.canAccessCareerHR);
+    setAuthCookies(response, result.accessToken, result.refreshToken);
     return result.response;
   }
 
