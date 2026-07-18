@@ -6,7 +6,7 @@ import * as ExcelJS from 'exceljs';
 import * as fs from 'fs';
 import * as path from 'path';
 
-@Processor('reports', { concurrency: 2 })
+@Processor('reports', { concurrency: 2, drainDelay: 60, stalledInterval: 300000 })
 export class ReportWorker extends WorkerHost {
   private readonly logger = new Logger(ReportWorker.name);
 

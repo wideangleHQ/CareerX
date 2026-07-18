@@ -1,5 +1,6 @@
 import {
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -18,6 +19,7 @@ import { generateOpaqueToken, sha256, signCareerJwt } from './utils/jwt.util';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private readonly breaker: PerformxCircuitBreaker;
 
   constructor(
@@ -41,6 +43,8 @@ export class AuthService {
     if (user.careerAccess && permissions.length === 0) {
       permissions = await this.getAllHRPermissions();
     }
+
+    await this.ensureHrEmployee(user);
 
     const session = await this.issueSession({
       sub: user.userId,
@@ -143,6 +147,34 @@ export class AuthService {
       return rows.map((row) => row.permission);
     } catch {
       throw new ServiceUnavailableException('External Dependency Unavailable');
+    }
+  }
+
+  private async ensureHrEmployee(user: VerifiedPerformxUser): Promise<void> {
+    try {
+      await this.prisma.hr_employees.upsert({
+        where: { id: user.userId },
+        create: {
+          id: user.userId,
+          full_name: user.email.split('@')[0] ?? user.email,
+          email: user.email,
+          department_id: user.departmentId ?? null,
+          performx_role: user.role,
+          is_active: true,
+          synced_at: new Date(),
+        },
+        update: {
+          email: user.email,
+          department_id: user.departmentId ?? null,
+          performx_role: user.role,
+          is_active: true,
+          synced_at: new Date(),
+        },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Failed to upsert hr_employee for ${user.userId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

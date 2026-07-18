@@ -15,7 +15,7 @@ interface NotificationJobData {
   entityId?: string;
 }
 
-@Processor('notifications', { concurrency: 10 })
+@Processor('notifications', { concurrency: 10, drainDelay: 60, stalledInterval: 300000 })
 export class NotificationWorker extends WorkerHost {
   private readonly logger = new Logger(NotificationWorker.name);
 

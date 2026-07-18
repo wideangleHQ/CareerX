@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
-import { BullModule } from '@nestjs/bullmq';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PerformxModule } from '../integrations/performx/performx.module';
+import { QueuesModule } from '../common/queue/queues.module';
 import { DepartmentSyncCron } from './department-sync.cron';
+import { EmployeeSyncCron } from './employee-sync.cron';
 import { InterviewReminderCron } from './interview-reminder.cron';
 import { ApplicationCleanupCron } from './application-cleanup.cron';
 import { ExpiredSlotCron } from './expired-slot.cron';
@@ -14,12 +15,12 @@ import { SchedulerHealthService } from './scheduler-health.service';
     ScheduleModule.forRoot(),
     PrismaModule,
     PerformxModule,
-    BullModule.registerQueue({ name: 'email' }),
-    BullModule.registerQueue({ name: 'notifications' }),
+    QueuesModule,
   ],
   providers: [
     SchedulerHealthService,
     DepartmentSyncCron,
+    EmployeeSyncCron,
     InterviewReminderCron,
     ApplicationCleanupCron,
     ExpiredSlotCron,

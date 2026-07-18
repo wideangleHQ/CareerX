@@ -3,12 +3,12 @@ import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 import { ReportsRepository } from './reports.repository';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { BullModule } from '@nestjs/bullmq';
+import { QueuesModule } from '../../common/queue/queues.module';
 
 @Module({
   imports: [
     PrismaModule,
-    BullModule.registerQueue({ name: 'reports' }),
+    QueuesModule,
   ],
   controllers: [ReportsController],
   providers: [ReportsService, ReportsRepository],

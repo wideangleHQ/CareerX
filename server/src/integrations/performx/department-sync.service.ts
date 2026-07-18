@@ -7,8 +7,8 @@ export interface PerformxDepartmentItem {
 }
 
 const CACHE_KEY = 'performx:departments';
-const CACHE_TTL_SECONDS = 10 * 60; // 10 minutes
-const TIMEOUT_MS = 5000;
+const CACHE_TTL_SECONDS = 10 * 60;
+const TIMEOUT_MS = 8000;
 
 @Injectable()
 export class DepartmentSyncService {
@@ -50,36 +50,33 @@ export class DepartmentSyncService {
   }
 
   private async fetchAndCache(): Promise<PerformxDepartmentItem[]> {
-    this.logger.log('Department Sync Started');
+    const url = `${this.baseUrl}/api/v1/internal/departments`;
+
+    this.logger.log(`Fetching departments from ${url}`);
+
+    if (!this.baseUrl) {
+      this.logger.error('PERFORMX_API_URL is not configured');
+      return this.fallbackToCache();
+    }
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
     try {
-      const response = await fetch(
-        `${this.baseUrl}/api/v1/internal/departments`,
-        {
-          method: 'GET',
-          headers: {
-            accept: 'application/json',
-            'x-internal-api-key': this.apiKey,
-          },
-          signal: controller.signal,
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          accept: 'application/json',
+          'x-internal-api-key': this.apiKey,
         },
-      );
+        signal: controller.signal,
+      });
 
-      if (response.status === 401 || response.status === 403) {
-        this.logger.error('Department Sync Failed: Unauthorized access to PerformX internal API');
-        return this.fallbackToCache();
-      }
-
-      if (response.status === 404) {
-        this.logger.error('Department Sync Failed: PerformX internal departments endpoint not found');
-        return this.fallbackToCache();
-      }
-
-      if (response.status === 408 || !response.ok) {
-        this.logger.error(`Department Sync Failed: PerformX returned ${response.status}`);
+      if (!response.ok) {
+        const body = await response.text().catch(() => '<unreadable>');
+        this.logger.error(
+          `PerformX returned ${response.status} from ${url} — body: ${body.substring(0, 500)}`,
+        );
         return this.fallbackToCache();
       }
 
@@ -93,7 +90,9 @@ export class DepartmentSyncService {
         : [];
 
       if (rows.length === 0 && !Array.isArray(payload)) {
-        this.logger.error('Department Sync Failed: Unexpected response shape from PerformX');
+        this.logger.error(
+          `Unexpected response shape from ${url}: ${JSON.stringify(payload).substring(0, 300)}`,
+        );
         return this.fallbackToCache();
       }
 
@@ -108,11 +107,19 @@ export class DepartmentSyncService {
         .map((row) => ({ id: row.id, name: row.name }));
 
       await this.redis.set(CACHE_KEY, JSON.stringify(departments), CACHE_TTL_SECONDS);
-      this.logger.log(`Department Sync Success: ${departments.length} departments cached`);
+      this.logger.log(`Department sync success: ${departments.length} departments cached`);
       return departments;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof ServiceUnavailableException) throw error;
-      this.logger.error('Department Sync Failed: Network error or timeout reaching PerformX');
+      this.logger.error({
+        message: 'Department sync network failure',
+        url,
+        errorName: error?.name,
+        errorMessage: error?.message,
+        code: error?.code,
+        errno: error?.errno,
+        cause: error?.cause?.message,
+      });
       return this.fallbackToCache();
     } finally {
       clearTimeout(timeout);
@@ -123,11 +130,14 @@ export class DepartmentSyncService {
     const cached = await this.redis.get(CACHE_KEY);
     if (cached) {
       try {
+        this.logger.warn('Serving departments from stale cache');
         return JSON.parse(cached) as PerformxDepartmentItem[];
       } catch {
         // Stale cache is unreadable
       }
     }
-    throw new ServiceUnavailableException('Department data unavailable: PerformX is unreachable and no cached data exists');
+    throw new ServiceUnavailableException(
+      'Department data unavailable: PerformX is unreachable and no cached data exists',
+    );
   }
 }

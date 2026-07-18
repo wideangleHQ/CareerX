@@ -183,23 +183,37 @@ export class DepartmentsService {
   }
 
   async getAllDepartments(): Promise<DepartmentListItem[]> {
-    // Departments are sourced from PerformX (Single Source of Truth).
-    // Local DB stores only department_id + is_hiring_enabled overrides.
-    const performxDepts = await this.departmentSync.getDepartments();
-    const localOverrides = await this.prisma.departments.findMany({
-      select: { id: true, is_hiring_enabled: true, synced_at: true },
-    });
-    const overrideMap = new Map(localOverrides.map((d) => [d.id, d]));
+    let performxDepts: { id: string; name: string }[];
 
-    return performxDepts.map((dept) => {
-      const local = overrideMap.get(dept.id);
-      return {
-        id: dept.id,
-        name: dept.name,
-        isHiringEnabled: local?.is_hiring_enabled ?? false,
-        syncedAt: local?.synced_at ?? new Date(),
-      };
+    try {
+      performxDepts = await this.departmentSync.getDepartments();
+    } catch {
+      performxDepts = [];
+    }
+
+    const localDepts = await this.prisma.departments.findMany({
+      select: { id: true, name: true, is_hiring_enabled: true, synced_at: true },
     });
+    const localMap = new Map(localDepts.map((d) => [d.id, d]));
+
+    if (performxDepts.length > 0) {
+      return performxDepts.map((dept) => {
+        const local = localMap.get(dept.id);
+        return {
+          id: dept.id,
+          name: dept.name,
+          isHiringEnabled: local?.is_hiring_enabled ?? false,
+          syncedAt: local?.synced_at ?? new Date(),
+        };
+      });
+    }
+
+    return localDepts.map((d) => ({
+      id: d.id,
+      name: d.name,
+      isHiringEnabled: d.is_hiring_enabled,
+      syncedAt: d.synced_at,
+    }));
   }
 
   async toggleHiring(id: string, dto: import('./dto/toggle-hiring.dto').ToggleHiringDto): Promise<DepartmentListItem> {

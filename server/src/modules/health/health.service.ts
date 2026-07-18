@@ -355,17 +355,29 @@ export class HealthService {
     }
   }
 
-  // Kubernetes-compatible readiness check
+  // Kubernetes-compatible readiness check.
+  // Result is cached for 30s so frequent platform probes don't generate
+  // constant database/Redis traffic.
+  private readinessCache: { value: boolean; expiresAt: number } | null = null;
+
   async isReady(): Promise<boolean> {
+    if (this.readinessCache && Date.now() < this.readinessCache.expiresAt) {
+      return this.readinessCache.value;
+    }
+
+    let ready = false;
     try {
       const [dbOk, redisOk] = await Promise.all([
         this.prisma.$queryRaw`SELECT 1`.then(() => true).catch(() => false),
         this.redis.get('health:check').then(() => true).catch(() => false),
       ]);
-      return dbOk && redisOk;
+      ready = dbOk && redisOk;
     } catch {
-      return false;
+      ready = false;
     }
+
+    this.readinessCache = { value: ready, expiresAt: Date.now() + 30_000 };
+    return ready;
   }
 
   // Kubernetes-compatible liveness check

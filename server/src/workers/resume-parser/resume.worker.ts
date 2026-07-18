@@ -3,7 +3,7 @@ import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
-@Processor('resume-parser', { concurrency: 2 })
+@Processor('resume-parser', { concurrency: 2, drainDelay: 60, stalledInterval: 300000 })
 export class ResumeWorker extends WorkerHost {
   private readonly logger = new Logger(ResumeWorker.name);
 
