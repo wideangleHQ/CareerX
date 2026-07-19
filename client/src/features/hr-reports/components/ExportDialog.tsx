@@ -53,11 +53,13 @@ export function ExportDialog({ departmentId, startDate, endDate }: ExportDialogP
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="cursor-pointer font-semibold">
-          <Download className="mr-1.5 h-4 w-4" /> Export Report
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button variant="outline" size="sm" className="cursor-pointer font-semibold">
+            <Download className="mr-1.5 h-4 w-4" /> Export Report
+          </Button>
+        }
+      />
       <DialogContent className="max-w-xs">
         <DialogHeader>
           <DialogTitle>Export Directory</DialogTitle>

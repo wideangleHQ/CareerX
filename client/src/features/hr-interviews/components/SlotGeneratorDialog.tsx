@@ -18,11 +18,13 @@ export function SlotGeneratorDialog() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="cursor-pointer font-semibold">
-          <Plus className="mr-1.5 h-4 w-4" /> Batch Generate Slots
-        </Button>
-      </DialogTrigger>
+      <DialogTrigger
+        render={
+          <Button className="cursor-pointer font-semibold">
+            <Plus className="mr-1.5 h-4 w-4" /> Batch Generate Slots
+          </Button>
+        }
+      />
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Generate Interview Slots</DialogTitle>

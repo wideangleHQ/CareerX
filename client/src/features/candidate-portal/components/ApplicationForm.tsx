@@ -286,10 +286,13 @@ export function ApplicationForm() {
             />
           )}
 
-          {/* Error Message */}
+          {/* Error Message — surface the backend's business-rule message (e.g. duplicate
+              application, deadline passed) instead of the generic Axios "status code 409". */}
           {submitMutation.isError && (
             <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-lg p-3">
-              {(submitMutation.error as any).message || 'Failed to submit application. Please try again.'}
+              {(submitMutation.error as any)?.response?.data?.message
+                || (submitMutation.error as any)?.message
+                || 'Failed to submit application. Please try again.'}
             </p>
           )}
 

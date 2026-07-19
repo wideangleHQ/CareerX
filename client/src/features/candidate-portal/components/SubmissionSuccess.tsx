@@ -7,6 +7,7 @@ import { CheckCircle2, Calendar, Mail, Phone, ChevronRight } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query';
 import { interviewsApi } from '@/src/api/interviews';
 import { format } from 'date-fns';
+import { formatSlotTime as formatSlotTimeOnly } from '@/src/lib/slot-time';
 
 interface SubmissionSuccessProps {
   data: {
@@ -36,10 +37,9 @@ export function SubmissionSuccess({ data }: SubmissionSuccessProps) {
   const formatSlotTime = () => {
     if (!slot) return 'Loading scheduled time...';
     try {
-      const date = new Date(slot.slot_date);
-      const time = new Date(slot.slot_time);
+      const date = new Date(slot.slotDate);
       const dateFormatted = format(date, 'EEEE, MMMM dd, yyyy');
-      const timeFormatted = time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const timeFormatted = formatSlotTimeOnly(slot.slotTime);
       return `${dateFormatted} at ${timeFormatted}`;
     } catch {
       return 'Scheduled successfully';

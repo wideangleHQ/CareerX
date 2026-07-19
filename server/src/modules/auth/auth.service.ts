@@ -46,13 +46,16 @@ export class AuthService {
 
     await this.ensureHrEmployee(user);
 
-    const session = await this.issueSession({
-      sub: user.userId,
-      email: user.email,
-      departmentId: user.departmentId ?? null,
-      permissions,
-      canAccessCareerHR: user.careerAccess || undefined,
-    });
+    const session = await this.issueSession(
+      {
+        sub: user.userId,
+        email: user.email,
+        departmentId: user.departmentId ?? null,
+        permissions,
+        canAccessCareerHR: user.careerAccess || undefined,
+      },
+      user.role,
+    );
 
     return { ...session, permissions, canAccessCareerHR: user.careerAccess };
   }
@@ -78,13 +81,25 @@ export class AuthService {
     }
 
     await this.redis.del(key);
-    return this.issueSession({
-      sub: record.sub,
-      email: record.email,
-      departmentId: record.departmentId,
-      permissions: record.permissions,
-      canAccessCareerHR: record.canAccessCareerHR,
-    });
+
+    let permissions = record.role
+      ? await this.getPermissions(record.role)
+      : record.permissions;
+
+    if (record.canAccessCareerHR && permissions.length === 0) {
+      permissions = await this.getAllHRPermissions();
+    }
+
+    return this.issueSession(
+      {
+        sub: record.sub,
+        email: record.email,
+        departmentId: record.departmentId,
+        permissions,
+        canAccessCareerHR: record.canAccessCareerHR,
+      },
+      record.role || '',
+    );
   }
 
   async logout(refreshToken: string | null): Promise<AuthSuccessResponse> {
@@ -178,7 +193,10 @@ export class AuthService {
     }
   }
 
-  private async issueSession(payload: CareerJwtPayload): Promise<{
+  private async issueSession(
+    payload: CareerJwtPayload,
+    role: string,
+  ): Promise<{
     accessToken: string;
     refreshToken: string;
     response: AuthSuccessResponse;
@@ -191,6 +209,7 @@ export class AuthService {
       email: payload.email,
       departmentId: payload.departmentId,
       permissions: payload.permissions,
+      role,
       canAccessCareerHR: payload.canAccessCareerHR,
     };
 

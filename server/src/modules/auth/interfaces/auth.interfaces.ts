@@ -22,6 +22,7 @@ export interface RefreshTokenRecord {
   email: string;
   departmentId: string | null;
   permissions: string[];
+  role: string;
   canAccessCareerHR?: boolean | undefined;
 }
 

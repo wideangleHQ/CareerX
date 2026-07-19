@@ -22,22 +22,24 @@ export function useUpcomingInterviews(dateFilter?: string) {
   const slots = slotsRes?.data || [];
   
   // Filter for booked slots only
-  let upcoming = slots.filter(s => s.is_booked) as UpcomingInterview[];
+  let upcoming = slots.filter(s => s.isBooked) as UpcomingInterview[];
 
   // If a specific date is selected, filter by that date
   if (dateFilter) {
-    upcoming = upcoming.filter(s => s.slot_date.startsWith(dateFilter));
+    upcoming = upcoming.filter(s => String(s.slotDate).slice(0, 10).startsWith(dateFilter));
   } else {
     // Otherwise filter for today and future
-    const todayStr = new Date().toISOString().split('T')[0];
-    upcoming = upcoming.filter(s => s.slot_date >= todayStr);
+    const todayStr = new Date().toISOString().split('T')[0]!;
+    upcoming = upcoming.filter(s => String(s.slotDate).slice(0, 10) >= todayStr);
   }
 
   // Sort chronologically
   upcoming.sort((a, b) => {
-    const timeA = new Date(`${a.slot_date.split('T')[0]}T${a.slot_time.split('T')[1] || a.slot_time}`).getTime();
-    const timeB = new Date(`${b.slot_date.split('T')[0]}T${b.slot_time.split('T')[1] || b.slot_time}`).getTime();
-    return timeA - timeB;
+    const dateA = String(a.slotDate).slice(0, 10);
+    const timeA = String(a.slotTime).includes('T') ? String(a.slotTime).split('T')[1] : String(a.slotTime);
+    const dateB = String(b.slotDate).slice(0, 10);
+    const timeB = String(b.slotTime).includes('T') ? String(b.slotTime).split('T')[1] : String(b.slotTime);
+    return new Date(`${dateA}T${timeA}`).getTime() - new Date(`${dateB}T${timeB}`).getTime();
   });
 
   // Augment with mock candidate data since the backend doesn't return it in findAll yet

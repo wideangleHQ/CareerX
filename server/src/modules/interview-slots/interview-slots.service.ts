@@ -352,20 +352,36 @@ export class InterviewSlotsService {
   }
 
   private buildWhere(query: QuerySlotsDto): Prisma.interview_slotsWhereInput {
-    return {
-      ...(query.departmentId ? { OR: [{ department_id: query.departmentId }, { department_id: null }] } : {}),
-      ...(query.hrId ? { hr_id: query.hrId } : {}),
-      ...(query.date ? { slot_date: query.date } : {}),
-      ...(query.isBooked !== undefined ? { is_booked: query.isBooked } : {}),
-      ...(query.availableOnly ? { 
-        slot_date: { gte: this.todayUtc() },
-        department: {
-          hiring_opportunities: {
-            some: { status: 'PUBLISHED' }
-          }
-        }
-      } : {}),
-    };
+    const and: Prisma.interview_slotsWhereInput[] = [];
+
+    if (query.departmentId) {
+      and.push({ OR: [{ department_id: query.departmentId }, { department_id: null }] });
+    }
+    if (query.hrId) {
+      and.push({ hr_id: query.hrId });
+    }
+    if (query.date) {
+      and.push({ slot_date: query.date });
+    }
+    if (query.isBooked !== undefined) {
+      and.push({ is_booked: query.isBooked });
+    }
+    if (query.availableOnly) {
+      and.push({ slot_date: { gte: this.todayUtc() } });
+      // A slot is publicly bookable when it is either a general slot (no
+      // department — HR's default "Any Department") OR belongs to a department
+      // that currently has a published opportunity. The previous filter required
+      // the department relation unconditionally, which silently excluded every
+      // department_id = null slot and left candidates seeing "No slots".
+      and.push({
+        OR: [
+          { department_id: null },
+          { department: { hiring_opportunities: { some: { status: 'PUBLISHED' } } } },
+        ],
+      });
+    }
+
+    return and.length > 0 ? { AND: and } : {};
   }
 
   private generateDates(dto: BulkGenerateSlotsDto): Date[] {

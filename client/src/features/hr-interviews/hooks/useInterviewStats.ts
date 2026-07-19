@@ -18,18 +18,18 @@ export function useInterviewStats() {
   });
 
   const slots = slotsRes?.data || [];
+  const todayStr = new Date().toISOString().split('T')[0]!;
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const dateOf = (s: (typeof slots)[number]) => String(s.slotDate).slice(0, 10);
 
   const stats: InterviewStats = {
     totalSlots: slots.length,
-    availableSlots: slots.filter((s) => !s.is_booked).length,
-    bookedSlots: slots.filter((s) => s.is_booked).length,
-    todayInterviews: slots.filter((s) => s.slot_date.startsWith(todayStr) && s.is_booked).length,
-    upcomingInterviews: slots.filter((s) => s.slot_date > todayStr && s.is_booked).length,
-    // Assuming we don't have explicit completed/cancelled status on slots yet, mocking for now
-    completedInterviews: slots.filter((s) => s.slot_date < todayStr && s.is_booked).length,
-    cancelledInterviews: 0, 
+    availableSlots: slots.filter((s) => !s.isBooked).length,
+    bookedSlots: slots.filter((s) => s.isBooked).length,
+    todayInterviews: slots.filter((s) => dateOf(s) === todayStr && s.isBooked).length,
+    upcomingInterviews: slots.filter((s) => dateOf(s) > todayStr && s.isBooked).length,
+    completedInterviews: slots.filter((s) => dateOf(s) < todayStr && s.isBooked).length,
+    cancelledInterviews: 0,
   };
 
   return {

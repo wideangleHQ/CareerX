@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+import { formatSlotTime } from '@/src/lib/slot-time';
 
 export function TodayInterviewsTable() {
   const todayStr = new Date().toISOString().split('T')[0];
@@ -23,14 +24,7 @@ export function TodayInterviewsTable() {
 
   const slots = slotsRes?.data || [];
 
-  const formatTime = (timeStr: string) => {
-    try {
-      const date = new Date(timeStr);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return timeStr;
-    }
-  };
+  const formatTime = (timeStr: string) => formatSlotTime(timeStr);
 
   return (
     <Card className="border-neutral-200">
@@ -61,14 +55,13 @@ export function TodayInterviewsTable() {
               {slots.map((slot) => (
                 <TableRow key={slot.id}>
                   <TableCell className="font-medium text-black">
-                    {formatTime(slot.slot_time)}
+                    {formatTime(slot.slotTime)}
                   </TableCell>
                   <TableCell>
-                    {/* Assuming slot details has slot_assignment and application in production */}
-                    Candidate ID: {slot.hr_id.substring(0, 8)}...
+                    {slot.hr?.email || 'Unknown'}
                   </TableCell>
                   <TableCell>{slot.department?.name || 'General'}</TableCell>
-                  <TableCell>{slot.hr?.full_name || 'HR Employee'}</TableCell>
+                  <TableCell>{slot.hr?.fullName || 'HR Employee'}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

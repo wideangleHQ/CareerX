@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useAvailableSlots } from '../hooks/useAvailableSlots';
 import { cn } from '@/src/lib/utils';
+import { formatSlotTime } from '@/src/lib/slot-time';
 import { Calendar as CalendarIcon, Clock, AlertCircle } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
@@ -19,7 +20,7 @@ export function InterviewSlotPicker({ departmentId, value, onChange, error }: In
 
   // Group slots by date
   const groupedSlots = slots.reduce<Record<string, typeof slots>>((acc, slot) => {
-    const dateKey = slot.slot_date.split('T')[0];
+    const dateKey = slot.slotDate.split('T')[0];
     if (!acc[dateKey]) {
       acc[dateKey] = [];
     }
@@ -34,15 +35,7 @@ export function InterviewSlotPicker({ departmentId, value, onChange, error }: In
     onChange(''); // Reset selected slot when date changes
   };
 
-  const formatTime = (timeStr: string) => {
-    try {
-      // timeStr might be "1970-01-01T10:00:00.000Z" or similar from DB
-      const date = new Date(timeStr);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return timeStr;
-    }
-  };
+  const formatTime = (timeStr: string) => formatSlotTime(timeStr);
 
   const formatDate = (dateStr: string) => {
     try {
@@ -69,6 +62,21 @@ export function InterviewSlotPicker({ departmentId, value, onChange, error }: In
           <div className="h-10 rounded-lg bg-neutral-100" />
           <div className="h-10 rounded-lg bg-neutral-100" />
           <div className="h-10 rounded-lg bg-neutral-100" />
+        </div>
+      </div>
+    );
+  }
+
+  if (queryError) {
+    return (
+      <div className="flex items-start gap-2 rounded-lg border border-red-100 bg-red-50/40 p-4 text-xs text-red-600">
+        <AlertCircle className="h-4 w-4 shrink-0 text-red-500" />
+        <div>
+          <p className="font-semibold">Could not load interview slots</p>
+          <p className="mt-0.5 opacity-90">
+            {(queryError as any)?.response?.data?.message
+              || 'Something went wrong while fetching slots. You can still submit and we will reach out.'}
+          </p>
         </div>
       </div>
     );
@@ -140,7 +148,7 @@ export function InterviewSlotPicker({ departmentId, value, onChange, error }: In
                       : "border-neutral-200 bg-white hover:bg-neutral-50"
                   )}
                 >
-                  {formatTime(slot.slot_time)}
+                  {formatTime(slot.slotTime)}
                 </button>
               );
             })}

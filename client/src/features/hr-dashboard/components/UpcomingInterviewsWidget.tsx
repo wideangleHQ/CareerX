@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Loader2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { format, addDays, isToday, isTomorrow } from 'date-fns';
+import { extractSlotTime, formatSlotTime } from '@/src/lib/slot-time';
 
 export function UpcomingInterviewsWidget() {
   const today = new Date();
@@ -26,13 +27,13 @@ export function UpcomingInterviewsWidget() {
   const slots = slotsRes?.data || [];
 
   const grouped = useMemo(() => {
-    const sorted = [...slots].sort(
-      (a, b) => new Date(`${a.slot_date}T${a.slot_time}`).getTime() - new Date(`${b.slot_date}T${b.slot_time}`).getTime()
-    );
+    const sortKey = (s: (typeof slots)[number]) =>
+      `${String(s.slotDate).split('T')[0]} ${extractSlotTime(s.slotTime) ?? ''}`;
+    const sorted = [...slots].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
     const groups: { label: string; slots: typeof sorted }[] = [];
-    const todaySlots = sorted.filter((s) => isToday(new Date(s.slot_date)));
-    const tomorrowSlots = sorted.filter((s) => isTomorrow(new Date(s.slot_date)));
-    const laterSlots = sorted.filter((s) => !isToday(new Date(s.slot_date)) && !isTomorrow(new Date(s.slot_date)));
+    const todaySlots = sorted.filter((s) => isToday(new Date(s.slotDate)));
+    const tomorrowSlots = sorted.filter((s) => isTomorrow(new Date(s.slotDate)));
+    const laterSlots = sorted.filter((s) => !isToday(new Date(s.slotDate)) && !isTomorrow(new Date(s.slotDate)));
 
     if (todaySlots.length) groups.push({ label: 'Today', slots: todaySlots });
     if (tomorrowSlots.length) groups.push({ label: 'Tomorrow', slots: tomorrowSlots });
@@ -41,13 +42,7 @@ export function UpcomingInterviewsWidget() {
     return groups;
   }, [slots]);
 
-  const formatTime = (timeStr: string) => {
-    try {
-      return new Date(timeStr).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return timeStr;
-    }
-  };
+  const formatTime = (timeStr: string) => formatSlotTime(timeStr);
 
   return (
     <Card className="border-neutral-200">
@@ -82,11 +77,11 @@ export function UpcomingInterviewsWidget() {
                     <div key={slot.id} className="flex items-center justify-between text-sm bg-neutral-50/50 rounded-lg px-3 py-2.5">
                       <div className="flex items-center gap-3 min-w-0">
                         <Badge variant="outline" className="text-[10px] font-mono shrink-0 bg-white">
-                          {formatTime(slot.slot_time)}
+                          {formatTime(slot.slotTime)}
                         </Badge>
                         <div className="min-w-0">
                           <p className="font-medium text-neutral-900 text-xs truncate">
-                            {slot.hr?.full_name || 'HR Employee'}
+                            {slot.hr?.fullName || 'HR Employee'}
                           </p>
                           <p className="text-[11px] text-muted-foreground truncate">
                             {slot.department?.name || 'General'}
@@ -94,7 +89,7 @@ export function UpcomingInterviewsWidget() {
                         </div>
                       </div>
                       <span className="text-[10px] text-neutral-400 shrink-0 ml-2">
-                        {format(new Date(slot.slot_date), 'MMM d')}
+                        {format(new Date(slot.slotDate), 'MMM d')}
                       </span>
                     </div>
                   ))}

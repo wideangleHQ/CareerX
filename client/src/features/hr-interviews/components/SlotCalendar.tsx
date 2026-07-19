@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Trash2, Calendar, Clock, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/src/lib/utils';
+import { formatSlotTime } from '@/src/lib/slot-time';
 
 interface SlotCalendarProps {
   onDateSelect?: (dateStr: string | undefined) => void;
@@ -34,7 +35,7 @@ export function SlotCalendar({ onDateSelect, selectedDate }: SlotCalendarProps) 
 
   // Group slots by date
   const groupedSlots = slots.reduce<Record<string, typeof slots>>((acc, slot) => {
-    const dateKey = slot.slot_date.split('T')[0];
+    const dateKey = String(slot.slotDate).split('T')[0];
     if (!acc[dateKey]) acc[dateKey] = [];
     acc[dateKey].push(slot);
     return acc;
@@ -42,19 +43,12 @@ export function SlotCalendar({ onDateSelect, selectedDate }: SlotCalendarProps) 
 
   const sortedDates = Object.keys(groupedSlots).sort();
 
-  const formatTime = (timeStr: string) => {
-    try {
-      const date = new Date(timeStr);
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return timeStr;
-    }
-  };
+  const formatTime = (timeStr: string) => formatSlotTime(timeStr);
 
   const formatDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
-      return format(date, 'EEEE, MMMM dd, yyyy');
+      return format(date, 'EEE, MMM dd, yyyy');
     } catch {
       return dateStr;
     }
@@ -69,11 +63,11 @@ export function SlotCalendar({ onDateSelect, selectedDate }: SlotCalendarProps) 
   return (
     <Card className="border-neutral-200 shadow-none h-full flex flex-col">
       <CardHeader className="bg-neutral-50/30 border-b p-4 shrink-0">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base font-bold text-neutral-800 flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-neutral-500" /> Slot Directory
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CardTitle className="text-base font-bold text-neutral-800 flex items-center gap-2 min-w-0">
+            <Calendar className="h-4 w-4 text-neutral-500 shrink-0" /> Slot Directory
           </CardTitle>
-          <div className="flex gap-2 text-[10px] font-semibold tracking-wider uppercase">
+          <div className="flex gap-2 text-[10px] font-semibold tracking-wider uppercase shrink-0">
             <span className="flex items-center gap-1 text-green-700 bg-green-50 px-1.5 py-0.5 rounded border border-green-200">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span> Booked
             </span>
@@ -115,15 +109,15 @@ export function SlotCalendar({ onDateSelect, selectedDate }: SlotCalendarProps) 
                         : "bg-white border-l-transparent hover:bg-neutral-50"
                     )}
                   >
-                    <h4 className={cn("text-sm font-bold", isSelected ? "text-primary" : "text-neutral-700")}>
+                    <h4 className={cn("text-sm font-bold min-w-0 truncate", isSelected ? "text-primary" : "text-neutral-700")}>
                       {formatDate(dateStr)}
                     </h4>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="bg-neutral-100 text-[10px]">
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge variant="secondary" className="bg-neutral-100 text-[10px] whitespace-nowrap">
                         {groupedSlots[dateStr].length} Slots
                       </Badge>
                       <ChevronRight className={cn(
-                        "h-4 w-4 text-neutral-400 transition-transform", 
+                        "h-4 w-4 text-neutral-400 transition-transform",
                         isSelected && "rotate-90 text-primary"
                       )} />
                     </div>
@@ -134,29 +128,32 @@ export function SlotCalendar({ onDateSelect, selectedDate }: SlotCalendarProps) 
                     "bg-neutral-50/50 px-4 py-3 border-b border-neutral-100",
                     !isSelected && selectedDate ? "hidden" : "block"
                   )}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {/* Max 2 columns: this panel is only 5/12 wide on desktop, so 3
+                        columns left ~120px per chip and the badge overlapped the
+                        delete button. */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {groupedSlots[dateStr].map((slot) => (
                         <div
                           key={slot.id}
                           className={cn(
-                            "flex items-center justify-between border rounded-lg p-2.5 transition-shadow bg-white",
-                            slot.is_booked ? "border-green-200/60 shadow-sm" : "border-neutral-200 hover:shadow-sm"
+                            "flex items-center justify-between gap-2 border rounded-lg p-2.5 transition-shadow bg-white",
+                            slot.isBooked ? "border-green-200/60 shadow-sm" : "border-neutral-200 hover:shadow-sm"
                           )}
                         >
-                          <div className="flex items-center gap-2.5">
-                            <Clock className={cn("h-3.5 w-3.5 shrink-0", slot.is_booked ? "text-green-500" : "text-neutral-400")} />
-                            <div>
-                              <p className="text-sm font-semibold text-neutral-900 leading-none">
-                                {formatTime(slot.slot_time)}
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <Clock className={cn("h-3.5 w-3.5 shrink-0", slot.isBooked ? "text-green-500" : "text-neutral-400")} />
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-neutral-900 leading-none whitespace-nowrap">
+                                {formatTime(slot.slotTime)}
                               </p>
-                              <p className="text-[10px] text-muted-foreground mt-1 truncate max-w-[100px]">
+                              <p className="text-[10px] text-muted-foreground mt-1 truncate">
                                 {slot.department?.name || 'Any Dept'}
                               </p>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-1.5">
-                            {slot.is_booked ? (
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {slot.isBooked ? (
                               <Badge variant="default" className="text-[9px] px-1.5 bg-green-50 text-green-700 border border-green-200 shadow-none hover:bg-green-100">
                                 Booked
                               </Badge>
@@ -168,11 +165,11 @@ export function SlotCalendar({ onDateSelect, selectedDate }: SlotCalendarProps) 
                             <Button
                               variant="ghost"
                               size="icon"
-                              disabled={deleteMutation.isPending || slot.is_booked}
+                              disabled={deleteMutation.isPending || slot.isBooked}
                               onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(slot.id); }}
                               className={cn(
                                 "h-6 w-6 rounded-full",
-                                slot.is_booked 
+                                slot.isBooked 
                                   ? "opacity-30 cursor-not-allowed" 
                                   : "text-neutral-400 hover:text-red-500 hover:bg-red-50 cursor-pointer"
                               )}

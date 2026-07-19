@@ -3,6 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import type { Application } from '@/src/api/types';
 import { CalendarClock, Video, UserCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { formatSlotTime } from '@/src/lib/slot-time';
 
 interface WorkspaceInterviewTabProps {
   application: Application | null;
@@ -71,9 +72,9 @@ export function WorkspaceInterviewTab({ application }: WorkspaceInterviewTabProp
                   <div>
                     <p className="text-xs text-muted-foreground">Date & Time</p>
                     <p className="text-sm font-semibold mt-0.5">
-                      {slotAssignment.slot?.slot_date ? new Date(slotAssignment.slot.slot_date).toLocaleDateString() : 'Unknown Date'}
+                      {slotAssignment.slot?.slotDate ? new Date(slotAssignment.slot.slotDate).toLocaleDateString() : 'Unknown Date'}
                     </p>
-                    <p className="text-xs text-neutral-500">{slotAssignment.slot?.slot_time || 'Unknown Time'}</p>
+                    <p className="text-xs text-neutral-500">{slotAssignment.slot?.slotTime ? formatSlotTime(slotAssignment.slot.slotTime) : 'Unknown Time'}</p>
                   </div>
                 </div>
               </div>

@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/src/features/hr-applications/components/StatusBadge';
 import { BarChart3, Loader2, Calendar } from 'lucide-react';
+import { formatSlotTime } from '@/src/lib/slot-time';
 
 export default function ReportsPage() {
   const [departmentId, setDepartmentId] = useState('ALL');
@@ -174,7 +175,7 @@ export default function ReportsPage() {
                     <TableRow key={slot.id}>
                       <TableCell className="text-xs font-medium text-black">
                         {new Date(slot.slot_date).toLocaleDateString()} at{' '}
-                        {new Date(slot.slot_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {formatSlotTime(slot.slot_time)}
                       </TableCell>
                       <TableCell>{slot.department?.name || 'Any'}</TableCell>
                       <TableCell>

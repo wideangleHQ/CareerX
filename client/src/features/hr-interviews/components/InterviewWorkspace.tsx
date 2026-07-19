@@ -51,18 +51,21 @@ export function InterviewWorkspace() {
       {/* Statistics */}
       <InterviewStats />
 
-      {/* Main Content Split: Calendar & Upcoming Interviews */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-280px)] min-h-[600px]">
+      {/* Main Content Split: Calendar & Upcoming Interviews.
+          Fixed shared height only on lg+ (side-by-side); on smaller screens the
+          panels stack and size naturally with their own scroll caps, so they
+          never crush or overlap each other. */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:h-[calc(100vh-280px)] lg:min-h-[600px]">
         {/* Left: Enhanced Slot Calendar (Interactive Directory) */}
-        <div className="lg:col-span-5 h-full">
-          <SlotCalendar 
-            onDateSelect={setSelectedDate} 
-            selectedDate={selectedDate} 
+        <div className="lg:col-span-5 lg:h-full min-h-0">
+          <SlotCalendar
+            onDateSelect={setSelectedDate}
+            selectedDate={selectedDate}
           />
         </div>
 
         {/* Right: Upcoming Interviews List */}
-        <div className="lg:col-span-7 h-full">
+        <div className="lg:col-span-7 lg:h-full min-h-0">
           <UpcomingInterviewsList dateFilter={selectedDate} />
         </div>
       </div>

@@ -19,7 +19,7 @@ interface EmailJobData {
   }>;
 }
 
-@Processor('email', { concurrency: 5, drainDelay: 60, stalledInterval: 300000 })
+@Processor('email', { concurrency: 5, drainDelay: 300, stalledInterval: 300000 })
 export class EmailWorker extends WorkerHost {
   private readonly logger = new Logger(EmailWorker.name);
 

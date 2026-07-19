@@ -171,9 +171,9 @@ export function GenerateOfferDialog({ open, onOpenChange, applicationId }: Gener
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
-            <DialogClose asChild>
-              <Button type="button" variant="outline" className="cursor-pointer">Cancel</Button>
-            </DialogClose>
+            <DialogClose
+              render={<Button type="button" variant="outline" className="cursor-pointer">Cancel</Button>}
+            />
             <Button
               type="submit"
               disabled={generateOffer.isPending}

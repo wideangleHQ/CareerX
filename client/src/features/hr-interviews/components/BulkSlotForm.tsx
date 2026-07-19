@@ -107,7 +107,7 @@ export function BulkSlotForm({ onSuccess }: BulkSlotFormProps) {
       {/* Target Department */}
       <div className="flex flex-col gap-1.5">
         <Label className="font-semibold text-black">Target Department</Label>
-        <Select value={departmentId} onValueChange={setDepartmentId}>
+        <Select value={departmentId} onValueChange={(val) => setDepartmentId(val ?? 'ANY')}>
           <SelectTrigger className="h-9">
             <SelectValue placeholder="Any Department" />
           </SelectTrigger>

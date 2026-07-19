@@ -68,15 +68,12 @@ export interface CandidateFile {
 
 export interface InterviewSlot {
   id: string;
-  hr_id: string;
-  department_id: string | null;
-  slot_date: string;
-  slot_time: string;
-  is_booked: boolean;
-  is_recurring: boolean;
-  created_at: string;
-  hr?: HrEmployee;
-  department?: Department | null;
+  slotDate: string;
+  slotTime: string;
+  isBooked: boolean;
+  isRecurring: boolean;
+  hr: { id: string; fullName: string; email: string };
+  department: { id: string; name: string } | null;
 }
 
 export interface SlotAssignment {
