@@ -90,6 +90,10 @@ export class RedisService implements OnModuleDestroy {
     return typeof result === 'number';
   }
 
+  async ping(): Promise<boolean> {
+    return (await this.safeCommand(['PING'])) === 'PONG';
+  }
+
   async onModuleDestroy(): Promise<void> {
     this.socket?.destroy();
     this.socket = null;

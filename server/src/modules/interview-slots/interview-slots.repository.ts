@@ -30,7 +30,12 @@ export class InterviewSlotsRepository {
     });
   }
 
-  create(data: Prisma.interview_slotsUncheckedCreateInput, select: Prisma.interview_slotsSelect) {
-    return this.prisma.interview_slots.create({ data, select });
+  create<T extends Prisma.interview_slotsSelect>(
+    data: Prisma.interview_slotsUncheckedCreateInput,
+    select: T,
+  ): Promise<Prisma.interview_slotsGetPayload<{ select: T }>> {
+    return this.prisma.interview_slots.create({ data, select }) as Promise<
+      Prisma.interview_slotsGetPayload<{ select: T }>
+    >;
   }
 }

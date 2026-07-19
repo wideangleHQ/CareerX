@@ -11,25 +11,31 @@ import { format, addDays, isToday, isTomorrow } from 'date-fns';
 import { extractSlotTime, formatSlotTime } from '@/src/lib/slot-time';
 
 export function UpcomingInterviewsWidget() {
-  const today = new Date();
-  const weekEnd = addDays(today, 7);
-
+  // The server has no date-range filter (startDate/endDate are rejected with
+  // 400); fetch booked slots and narrow to the next 7 days client-side.
   const { data: slotsRes, isLoading } = useQuery({
     queryKey: ['dashboard', 'upcoming-interviews'],
     queryFn: () =>
       interviewsApi.findAll({
-        startDate: format(today, 'yyyy-MM-dd'),
-        endDate: format(weekEnd, 'yyyy-MM-dd'),
         isBooked: true,
+        limit: 100,
+        sortOrder: 'asc',
       }),
   });
 
   const slots = slotsRes?.data || [];
 
   const grouped = useMemo(() => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const weekEnd = addDays(todayStart, 7);
+    const inRange = slots.filter((s) => {
+      const d = new Date(s.slotDate);
+      return d >= todayStart && d <= weekEnd;
+    });
     const sortKey = (s: (typeof slots)[number]) =>
       `${String(s.slotDate).split('T')[0]} ${extractSlotTime(s.slotTime) ?? ''}`;
-    const sorted = [...slots].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+    const sorted = [...inRange].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
     const groups: { label: string; slots: typeof sorted }[] = [];
     const todaySlots = sorted.filter((s) => isToday(new Date(s.slotDate)));
     const tomorrowSlots = sorted.filter((s) => isTomorrow(new Date(s.slotDate)));
@@ -81,10 +87,10 @@ export function UpcomingInterviewsWidget() {
                         </Badge>
                         <div className="min-w-0">
                           <p className="font-medium text-neutral-900 text-xs truncate">
-                            {slot.hr?.fullName || 'HR Employee'}
+                            {slot.assignment?.application.candidate.fullName || 'Unknown candidate'}
                           </p>
                           <p className="text-[11px] text-muted-foreground truncate">
-                            {slot.department?.name || 'General'}
+                            {slot.department?.name || 'General'} · {slot.hr?.fullName || 'HR'}
                           </p>
                         </div>
                       </div>

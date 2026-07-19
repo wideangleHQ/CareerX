@@ -2,6 +2,7 @@ import {
   ConflictException,
   Injectable,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
@@ -25,7 +26,32 @@ const slotSelect = {
   is_recurring: true,
   hr: { select: { id: true, full_name: true, email: true } },
   department: { select: { id: true, name: true } },
+  slot_assignment: {
+    select: {
+      id: true,
+      assigned_hr_id: true,
+      application: {
+        select: {
+          id: true,
+          application_code: true,
+          status: true,
+          candidate: { select: { id: true, full_name: true, email: true } },
+        },
+      },
+    },
+  },
 } satisfies Prisma.interview_slotsSelect;
+
+export interface SlotAssignmentResponse {
+  id: string;
+  assignedHrId: string;
+  application: {
+    id: string;
+    applicationCode: string;
+    status: string;
+    candidate: { id: string; fullName: string; email: string };
+  };
+}
 
 export interface SlotResponse {
   id: string;
@@ -35,6 +61,7 @@ export interface SlotResponse {
   isRecurring: boolean;
   hr: { id: string; fullName: string; email: string };
   department: { id: string; name: string } | null;
+  assignment: SlotAssignmentResponse | null;
 }
 
 export interface SlotListResponse {
@@ -51,6 +78,8 @@ export interface BulkGenerateSlotsResponse {
 
 @Injectable()
 export class InterviewSlotsService {
+  private readonly logger = new Logger(InterviewSlotsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
@@ -82,6 +111,7 @@ export class InterviewSlotsService {
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
       if (this.isUniqueError(error)) throw new ConflictException('Conflict');
+      this.logger.error(`create() failed [hrId=${dto.hrId}]`, error instanceof Error ? error.stack : error);
       throw new InternalServerErrorException('Internal Server Error');
     }
   }
@@ -112,6 +142,7 @@ export class InterviewSlotsService {
       return { success: true, created: result.count, skipped: rows.length - result.count };
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
+      this.logger.error(`bulkGenerate() failed [hrId=${dto.hrId}]`, error instanceof Error ? error.stack : error);
       throw new InternalServerErrorException('Internal Server Error');
     }
   }
@@ -129,7 +160,8 @@ export class InterviewSlotsService {
         ? rows.filter((row) => this.isFuture(row.slot_date, row.slot_time))
         : rows;
       return this.toListResponse(visibleRows, query.limit);
-    } catch {
+    } catch (error) {
+      this.logger.error('findAll() failed', error instanceof Error ? error.stack : error);
       throw new InternalServerErrorException('Internal Server Error');
     }
   }
@@ -208,7 +240,7 @@ export class InterviewSlotsService {
 
         const updatedSlot = await tx.interview_slots.updateMany({
           where: { id: dto.slotId, is_booked: false },
-          data: { is_booked: true, updated_at: new Date() },
+          data: { is_booked: true },
         });
         if (updatedSlot.count !== 1) throw new ConflictException('Conflict: Slot is already booked');
 
@@ -314,6 +346,27 @@ export class InterviewSlotsService {
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
       if (this.isUniqueError(error)) throw new ConflictException('Conflict');
+
+      const prismaCode = this.prismaCode(error);
+      const errObj = error instanceof Error ? error : {};
+      this.logger.error(
+        `book() failed [slotId=${dto.slotId}, applicationId=${dto.applicationId}] ` +
+        `constructor=${(error as object)?.constructor?.name} name=${(errObj as Error).name} ` +
+        `prismaCode=${prismaCode} meta=${JSON.stringify((error as any)?.meta)}`,
+      );
+      this.logger.error(
+        `book() error detail: ${JSON.stringify(error, Object.getOwnPropertyNames(errObj))}`,
+      );
+      if (error instanceof Error) {
+        this.logger.error(error.stack);
+      }
+
+      if (prismaCode === 'P2003') {
+        throw new ConflictException('Conflict: A referenced record (HR employee or slot) no longer exists');
+      }
+      if (prismaCode === 'P2025') {
+        throw new NotFoundException('Record was deleted during booking');
+      }
       throw new InternalServerErrorException('Internal Server Error');
     } finally {
       await this.redis.del(lockKey);
@@ -336,6 +389,7 @@ export class InterviewSlotsService {
       return { success: true };
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
+      this.logger.error(`remove() failed [id=${id}]`, error instanceof Error ? error.stack : error);
       throw new InternalServerErrorException('Internal Server Error');
     }
   }
@@ -420,6 +474,22 @@ export class InterviewSlotsService {
       isRecurring: slot.is_recurring,
       hr: { id: slot.hr.id, fullName: slot.hr.full_name, email: slot.hr.email },
       department: slot.department ? { id: slot.department.id, name: slot.department.name } : null,
+      assignment: slot.slot_assignment
+        ? {
+            id: slot.slot_assignment.id,
+            assignedHrId: slot.slot_assignment.assigned_hr_id,
+            application: {
+              id: slot.slot_assignment.application.id,
+              applicationCode: slot.slot_assignment.application.application_code,
+              status: slot.slot_assignment.application.status,
+              candidate: {
+                id: slot.slot_assignment.application.candidate.id,
+                fullName: slot.slot_assignment.application.candidate.full_name,
+                email: slot.slot_assignment.application.candidate.email,
+              },
+            },
+          }
+        : null,
     };
   }
 
@@ -443,6 +513,13 @@ export class InterviewSlotsService {
   }
 
   private isUniqueError(error: unknown): boolean {
-    return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002';
+    return this.prismaCode(error) === 'P2002';
+  }
+
+  private prismaCode(error: unknown): string | null {
+    if (typeof error === 'object' && error !== null && typeof (error as { code?: unknown }).code === 'string') {
+      return (error as { code: string }).code;
+    }
+    return null;
   }
 }

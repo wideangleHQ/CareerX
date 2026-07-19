@@ -74,6 +74,16 @@ export interface InterviewSlot {
   isRecurring: boolean;
   hr: { id: string; fullName: string; email: string };
   department: { id: string; name: string } | null;
+  assignment: {
+    id: string;
+    assignedHrId: string;
+    application: {
+      id: string;
+      applicationCode: string;
+      status: string;
+      candidate: { id: string; fullName: string; email: string };
+    };
+  } | null;
 }
 
 export interface SlotAssignment {
@@ -137,14 +147,27 @@ export interface Application {
   status_history: StatusHistory[];
 }
 
+// Must match the server's allowed query keys exactly — unknown keys are
+// rejected with 400 (parseQueryApplicationsDto allow-list). Sorting is
+// cursor-based (no page param) and sortBy values are camelCase.
 export interface QueryApplicationsParams {
-  page?: number;
+  cursor?: string;
   limit?: number;
   search?: string;
-  status?: ApplicationStatus;
   departmentId?: string;
-  hrId?: string;
-  sortField?: string;
+  hiringOpportunityId?: string;
+  status?: ApplicationStatus;
+  assignedHrId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  careerLevel?: string;
+  hiringType?: string;
+  hiringPriority?: string;
+  workMode?: string;
+  location?: string;
+  minExperience?: number;
+  maxExperience?: number;
+  sortBy?: 'createdAt' | 'updatedAt' | 'status' | 'candidateName' | 'department' | 'assignedHr' | 'priority';
   sortOrder?: 'asc' | 'desc';
 }
 
@@ -175,12 +198,17 @@ export interface SlotListResponse {
   data: InterviewSlot[];
 }
 
+// Must match the server's allowed query keys exactly — unknown keys are
+// rejected with 400 (parseQuerySlotsDto allow-list).
 export interface QuerySlotsParams {
-  startDate?: string;
-  endDate?: string;
+  cursor?: string;
+  limit?: number;
   departmentId?: string;
   hrId?: string;
+  date?: string;
   isBooked?: boolean;
+  availableOnly?: boolean;
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface DashboardStats {

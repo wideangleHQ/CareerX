@@ -11,15 +11,15 @@ import { formatSlotTime as formatSlotTimeOnly } from '@/src/lib/slot-time';
 
 interface SubmissionSuccessProps {
   data: {
-    candidate: {
-      full_name: string;
-      email: string;
-      mobile_number: string;
-    };
     application: {
-      application_code: string;
+      applicationCode: string;
+      candidate: {
+        fullName: string;
+        email: string;
+        mobileNumber: string;
+      };
     };
-    slotId: string;
+    slotId: string | null;
   };
 }
 
@@ -54,7 +54,7 @@ export function SubmissionSuccess({ data }: SubmissionSuccessProps) {
         </div>
         <CardTitle className="text-2xl font-bold text-black">Application Submitted!</CardTitle>
         <CardDescription className="text-neutral-500">
-          Your application code is <span className="font-semibold text-black">{data.application.application_code}</span>
+          Your application code is <span className="font-semibold text-black">{data.application.applicationCode}</span>
         </CardDescription>
       </CardHeader>
       <CardContent className="p-8 space-y-6">
@@ -62,13 +62,13 @@ export function SubmissionSuccess({ data }: SubmissionSuccessProps) {
           <h3 className="text-sm font-bold text-neutral-400 uppercase tracking-wider">Candidate Details</h3>
           <div className="space-y-3 bg-neutral-50 border rounded-xl p-4">
             <div className="flex items-center gap-2.5 text-sm text-black font-semibold">
-              <span className="text-neutral-500 font-normal">Name:</span> {data.candidate.full_name}
+              <span className="text-neutral-500 font-normal">Name:</span> {data.application.candidate.fullName}
             </div>
             <div className="flex items-center gap-2.5 text-sm text-neutral-600">
-              <Mail className="h-4 w-4 text-neutral-400" /> {data.candidate.email}
+              <Mail className="h-4 w-4 text-neutral-400" /> {data.application.candidate.email}
             </div>
             <div className="flex items-center gap-2.5 text-sm text-neutral-600">
-              <Phone className="h-4 w-4 text-neutral-400" /> {data.candidate.mobile_number}
+              <Phone className="h-4 w-4 text-neutral-400" /> {data.application.candidate.mobileNumber}
             </div>
           </div>
 

@@ -7,7 +7,7 @@ import { ApplicationFilters } from '@/src/features/hr-applications/components/Ap
 import { ApplicationTable } from '@/src/features/hr-applications/components/ApplicationTable';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Loader2, ListFilter } from 'lucide-react';
-import type { ApplicationStatus } from '@/src/api/types';
+import type { ApplicationStatus, QueryApplicationsParams } from '@/src/api/types';
 
 export default function ApplicationsPage() {
   const [search, setSearch] = useState('');
@@ -23,12 +23,12 @@ export default function ApplicationsPage() {
   const { data: response, isLoading } = useQuery({
     queryKey: ['applications', search, status, departmentId, cursor, limit],
     queryFn: async () => {
-      const params: any = {
+      const params: QueryApplicationsParams = {
         limit,
-        cursor,
-        sortField: 'created_at',
+        sortBy: 'createdAt',
         sortOrder: 'desc',
       };
+      if (cursor) params.cursor = cursor;
       if (search) params.search = search;
       if (status !== 'ALL') params.status = status as ApplicationStatus;
       if (departmentId !== 'ALL') params.departmentId = departmentId;

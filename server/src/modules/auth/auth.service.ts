@@ -67,7 +67,14 @@ export class AuthService {
   }> {
     const key = AUTH_REDIS_KEYS.refresh(refreshToken);
     const existing = await this.redis.get(key);
-    if (!existing) throw new UnauthorizedException('Unauthorized');
+    if (!existing) {
+      // Distinguish "token expired/revoked" (401) from "Redis unreachable"
+      // (503): a dead dependency must not destroy the client session.
+      if (!(await this.redis.ping())) {
+        throw new ServiceUnavailableException('External Dependency Unavailable');
+      }
+      throw new UnauthorizedException('Unauthorized');
+    }
 
     let record: RefreshTokenRecord;
     try {
@@ -80,7 +87,11 @@ export class AuthService {
       throw new UnauthorizedException('Unauthorized');
     }
 
-    await this.redis.del(key);
+    // Rotate with a reuse-grace window instead of an immediate delete. Tabs
+    // share the career_rt cookie but refresh independently; with single-use
+    // deletion the concurrent loser gets a false 401 and its page dies. The
+    // old token stays valid for a few more seconds, then expires.
+    await this.redis.set(key, existing, AUTH_TTL_SECONDS.refreshReuseGrace);
 
     let permissions = record.role
       ? await this.getPermissions(record.role)

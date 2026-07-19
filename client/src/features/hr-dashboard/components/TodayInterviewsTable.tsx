@@ -14,11 +14,13 @@ export function TodayInterviewsTable() {
 
   const { data: slotsRes, isLoading } = useQuery({
     queryKey: ['today-interviews'],
+    // `date` is the server's exact-date filter; startDate/endDate are rejected
+    // by the query allow-list with 400.
     queryFn: () =>
       interviewsApi.findAll({
-        startDate: todayStr,
-        endDate: todayStr,
+        date: todayStr,
         isBooked: true,
+        limit: 100,
       }),
   });
 
@@ -58,7 +60,7 @@ export function TodayInterviewsTable() {
                     {formatTime(slot.slotTime)}
                   </TableCell>
                   <TableCell>
-                    {slot.hr?.email || 'Unknown'}
+                    {slot.assignment?.application.candidate.fullName || 'Unknown candidate'}
                   </TableCell>
                   <TableCell>{slot.department?.name || 'General'}</TableCell>
                   <TableCell>{slot.hr?.fullName || 'HR Employee'}</TableCell>

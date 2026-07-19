@@ -129,9 +129,9 @@ export class ApplicationsService {
             deleted_at: null,
             status: { in: DUPLICATE_ACTIVE_STATUSES },
           },
-          select: { id: true },
+          select: applicationDetailSelect,
         });
-        if (duplicate) throw new ConflictException('Duplicate active application');
+        if (duplicate) return this.toDetail(duplicate);
 
         const applicationCode = await this.generateApplicationCode(tx);
 

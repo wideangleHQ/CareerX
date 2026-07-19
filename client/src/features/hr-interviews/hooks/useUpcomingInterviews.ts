@@ -1,36 +1,44 @@
 import { useQuery } from '@tanstack/react-query';
 import { interviewsApi } from '@/src/api/interviews';
+import { useAuth } from '@/src/context/AuthContext';
 import type { InterviewSlot } from '@/src/api/types';
 
-// For upcoming interviews, we typically need candidate and application details.
-// Since `InterviewSlot` currently doesn't include the nested `slot_assignment` and `application` in types.ts (unless expanded),
-// we will type assert or mock the augmented data for the UI.
-
 export type UpcomingInterview = InterviewSlot & {
-  candidateName?: string;
-  applicationCode?: string;
-  status?: string;
-  meetingMode?: string;
+  candidateName: string;
+  applicationCode: string;
+  status: string;
+  meetingMode: string;
 };
 
 export function useUpcomingInterviews(dateFilter?: string) {
+  const { user } = useAuth();
+
+  // Booked slots of the logged-in HR only. Server-side isBooked filter is
+  // required: without it the default page (limit 20, date asc) fills up with
+  // available/past slots and booked interviews never make it into the response.
   const { data: slotsRes, isLoading, error } = useQuery({
-    queryKey: ['slots'], // In a real app, this should be a dedicated endpoint like `/api/v1/interviews/upcoming`
-    queryFn: () => interviewsApi.findAll(),
+    queryKey: ['slots', 'booked', user?.sub],
+    queryFn: () =>
+      interviewsApi.findAll({
+        isBooked: true,
+        hrId: user!.sub,
+        limit: 100,
+        sortOrder: 'asc',
+      }),
+    enabled: !!user?.sub,
   });
 
   const slots = slotsRes?.data || [];
-  
-  // Filter for booked slots only
-  let upcoming = slots.filter(s => s.isBooked) as UpcomingInterview[];
+
+  let upcoming = slots.filter((s) => s.isBooked);
 
   // If a specific date is selected, filter by that date
   if (dateFilter) {
-    upcoming = upcoming.filter(s => String(s.slotDate).slice(0, 10).startsWith(dateFilter));
+    upcoming = upcoming.filter((s) => String(s.slotDate).slice(0, 10).startsWith(dateFilter));
   } else {
     // Otherwise filter for today and future
     const todayStr = new Date().toISOString().split('T')[0]!;
-    upcoming = upcoming.filter(s => String(s.slotDate).slice(0, 10) >= todayStr);
+    upcoming = upcoming.filter((s) => String(s.slotDate).slice(0, 10) >= todayStr);
   }
 
   // Sort chronologically
@@ -42,17 +50,16 @@ export function useUpcomingInterviews(dateFilter?: string) {
     return new Date(`${dateA}T${timeA}`).getTime() - new Date(`${dateB}T${timeB}`).getTime();
   });
 
-  // Augment with mock candidate data since the backend doesn't return it in findAll yet
-  const augmentedUpcoming = upcoming.map((slot, index) => ({
+  const interviews: UpcomingInterview[] = upcoming.map((slot) => ({
     ...slot,
-    candidateName: `Candidate ${index + 1}`,
-    applicationCode: `APP-${1000 + index}`,
-    status: 'Scheduled',
+    candidateName: slot.assignment?.application.candidate.fullName ?? 'Unknown candidate',
+    applicationCode: slot.assignment?.application.applicationCode ?? '—',
+    status: slot.assignment?.application.status ?? 'SLOT_BOOKED',
     meetingMode: 'Video Call',
   }));
 
   return {
-    interviews: augmentedUpcoming,
+    interviews,
     isLoading,
     error,
   };
