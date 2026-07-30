@@ -13,6 +13,9 @@ export const useGenerateOffer = () => {
     onSuccess: () => {
       toast.success('Offer generated successfully');
       queryClient.invalidateQueries({ queryKey: offerKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      // Offer transitions move application status, which drives every metric.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to generate offer');
@@ -30,6 +33,9 @@ export const useUpdateOfferStatus = () => {
       const label = variables.status.replace(/_/g, ' ').toLowerCase();
       toast.success(`Offer ${label} successfully`);
       queryClient.invalidateQueries({ queryKey: offerKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      // Offer transitions move application status, which drives every metric.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to update offer status');
@@ -46,6 +52,9 @@ export const useExtendOffer = () => {
     onSuccess: () => {
       toast.success('Offer extended successfully');
       queryClient.invalidateQueries({ queryKey: offerKeys.all });
+      queryClient.invalidateQueries({ queryKey: ['applications'] });
+      // Offer transitions move application status, which drives every metric.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to extend offer');

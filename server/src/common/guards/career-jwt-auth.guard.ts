@@ -12,15 +12,24 @@ type AuthenticatedRequest = Request & { user?: CareerJwtPayload };
 export class CareerJwtAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    try {
-      const token = readCookie(request.headers.cookie, AUTH_COOKIES.access);
-      if (!token) {
-        throw new UnauthorizedException('Unauthorized');
-      }
-      request.user = verifyCareerJwt(token);
-      return true;
-    } catch {
+    const token = this.extractToken(request);
+    if (!token) {
       throw new UnauthorizedException('Unauthorized');
     }
+    request.user = verifyCareerJwt(token);
+    return true;
+  }
+
+  private extractToken(request: AuthenticatedRequest): string | null {
+    const cookieToken = readCookie(request.headers.cookie, AUTH_COOKIES.access);
+    if (cookieToken) return cookieToken;
+
+    const authHeader = request.headers.authorization;
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+      const bearer = authHeader.slice(7).trim();
+      if (bearer.length > 0) return bearer;
+    }
+
+    return null;
   }
 }

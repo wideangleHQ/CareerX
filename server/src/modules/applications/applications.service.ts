@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  HttpException,
   InternalServerErrorException,
   NotFoundException,
   ServiceUnavailableException,
@@ -19,6 +20,7 @@ import type { AssignHrDto } from './dto/assign-hr.dto';
 import type { CreateApplicationDto } from './dto/create-application.dto';
 import type { QueryApplicationsDto } from './dto/query-applications.dto';
 import type { UpdateStatusDto } from './dto/update-status.dto';
+import { StorageBuckets } from '../../storage/storage.config';
 
 const DUPLICATE_ACTIVE_STATUSES: application_status_enum[] = ['NEW', 'SLOT_BOOKED', 'INTERVIEWED'];
 const STATUS_TRANSITIONS: Record<application_status_enum, application_status_enum[]> = {
@@ -32,6 +34,11 @@ const STATUS_TRANSITIONS: Record<application_status_enum, application_status_enu
   REJECTED: [],
   WITHDRAWN: [],
 };
+
+function safeFileName(value: string, fallback: string): string {
+  const name = value.split(/[\\/]/).pop()?.trim().replace(/[^a-zA-Z0-9._-]/g, '_');
+  return name && name !== '.' && name !== '..' ? name.slice(0, 255) : fallback;
+}
 
 const applicationListSelect = {
   id: true,
@@ -48,6 +55,12 @@ const applicationListSelect = {
   assigned_hr: {
     select: { id: true, full_name: true, email: true },
   },
+  hiring_opportunity: {
+    select: { id: true, public_title: true, internal_position: true, hiring_priority: true },
+  },
+  slot_assignment: {
+    select: { id: true },
+  },
 } satisfies Prisma.applicationsSelect;
 
 const applicationDetailSelect = {
@@ -57,8 +70,20 @@ const applicationDetailSelect = {
   _count: {
     select: { hr_notes: true, interview_feedback: true },
   },
+  files: {
+    select: { id: true, file_name: true, file_type: true, bucket: true, file_size_kb: true, mime_type: true, created_at: true },
+    orderBy: { created_at: 'desc' },
+  },
   slot_assignment: {
-    select: { id: true },
+    select: {
+      id: true,
+      application_id: true,
+      slot_id: true,
+      assigned_hr_id: true,
+      assigned_at: true,
+      slot: { select: { id: true, slot_date: true, slot_time: true } },
+      assigned_hr: { select: { id: true, full_name: true, email: true } },
+    },
   },
 } satisfies Prisma.applicationsSelect;
 
@@ -72,7 +97,6 @@ export class ApplicationsService {
 
   async create(dto: CreateApplicationDto): Promise<ApplicationDetailDto> {
     try {
-      // Validate department_id against PerformX (Single Source of Truth)
       const isDepartmentValid = await this.departmentSync.validateDepartmentId(dto.departmentId);
       if (!isDepartmentValid) {
         throw new BadRequestException('Invalid department: department does not exist in PerformX');
@@ -90,7 +114,7 @@ export class ApplicationsService {
         if (!opportunity) throw new ConflictException('Opportunity is not available');
 
         const departmentId = opportunity.department_id;
-        
+
         if (opportunity.application_deadline && new Date(opportunity.application_deadline) < new Date()) {
           throw new ConflictException('Application deadline has passed');
         }
@@ -100,7 +124,7 @@ export class ApplicationsService {
         }
 
         let candidate = await tx.candidates.findFirst({
-          where: { 
+          where: {
              OR: [
                { email: dto.email },
                { mobile_number: dto.mobileNumber }
@@ -135,12 +159,14 @@ export class ApplicationsService {
 
         const applicationCode = await this.generateApplicationCode(tx);
 
-        const fileCreates: { file_type: 'RESUME' | 'ORG_PROOF'; storage_path: string; file_name: string }[] = [];
+        const fileCreates: { file_type: 'RESUME' | 'ORG_PROOF'; bucket: string; storage_path: string; file_name: string }[] = [];
         if (dto.resumePath) {
-          fileCreates.push({ file_type: 'RESUME', storage_path: dto.resumePath, file_name: dto.resumePath.split('/').pop() || 'resume.pdf' });
+          const fileName = safeFileName(dto.resumePath, 'resume.pdf');
+          fileCreates.push({ file_type: 'RESUME', bucket: StorageBuckets.CANDIDATE, storage_path: `applications/__APPLICATION_ID__/${fileName}`, file_name: fileName });
         }
         if (dto.previousOrgProofPath) {
-          fileCreates.push({ file_type: 'ORG_PROOF', storage_path: dto.previousOrgProofPath, file_name: dto.previousOrgProofPath.split('/').pop() || 'org-proof' });
+          const fileName = safeFileName(dto.previousOrgProofPath, 'org-proof');
+          fileCreates.push({ file_type: 'ORG_PROOF', bucket: StorageBuckets.CANDIDATE, storage_path: `applications/__APPLICATION_ID__/${fileName}`, file_name: fileName });
         }
 
         const application = await tx.applications.create({
@@ -152,7 +178,7 @@ export class ApplicationsService {
             assigned_hr_id: null,
             self_description: dto.selfDescription,
             experience_years: dto.experienceYears,
-            previous_org_proof_url: dto.previousOrgProofPath ?? null,
+            previous_org_proof_url: null,
             status: 'NEW',
             status_history: {
               create: {
@@ -162,25 +188,30 @@ export class ApplicationsService {
                 reason: 'Application submitted',
               },
             },
-            ...(fileCreates.length > 0 ? { files: { create: fileCreates } } : {}),
           },
           select: applicationDetailSelect,
         });
 
-        const data = this.toDetail(application);
+        if (fileCreates.length > 0) {
+          await tx.candidate_files.createMany({
+            data: fileCreates.map((file) => ({
+              ...file,
+              application_id: application.id,
+              storage_path: file.storage_path.replace('__APPLICATION_ID__', application.id),
+            })),
+          });
+        }
+        const persistedApplication = fileCreates.length > 0
+          ? await tx.applications.findUniqueOrThrow({ where: { id: application.id }, select: applicationDetailSelect })
+          : application;
+        const data = this.toDetail(persistedApplication);
         this.events.emit('ApplicationCreated', { applicationId: application.id });
         return data;
-      });
+      }, { maxWait: 10000, timeout: 30000 });
     } catch (error) {
-      if (
-        error instanceof NotFoundException ||
-        error instanceof ConflictException ||
-        error instanceof BadRequestException ||
-        error instanceof ServiceUnavailableException
-      ) throw error;
+      if (error instanceof HttpException) throw error;
       throw new InternalServerErrorException('Internal Server Error');
     }
-
   }
 
   async findAll(query: QueryApplicationsDto, user?: any): Promise<ApplicationListResponseDto> {
@@ -213,8 +244,7 @@ export class ApplicationsService {
   async findOne(id: string, user?: any): Promise<ApplicationDetailDto> {
     const application = await this.findActiveApplication(id);
     if (user) {
-      const isElevated = user.permissions?.includes('CAREER_ADMIN') || user.permissions?.includes('CAREER_REPORTS');
-      if (!isElevated && application.assigned_hr?.id !== user.sub) {
+      if (!this.canViewApplication(application.assigned_hr?.id ?? null, user)) {
         throw new NotFoundException(`Application with ID ${id} not found or you don't have permission`);
       }
     }
@@ -237,8 +267,7 @@ export class ApplicationsService {
     if (!application) throw new NotFoundException('Application not found');
 
     if (user) {
-      const isElevated = user.permissions?.includes('CAREER_ADMIN') || user.permissions?.includes('CAREER_REPORTS');
-      if (!isElevated && application.assigned_hr_id !== user.sub) {
+      if (!this.canViewApplication(application.assigned_hr_id, user)) {
         throw new NotFoundException('Application not found');
       }
     }
@@ -332,8 +361,7 @@ export class ApplicationsService {
         if (!existing) throw new NotFoundException('Application not found');
 
         if (user) {
-          const isElevated = user.permissions?.includes('CAREER_ADMIN') || user.permissions?.includes('CAREER_REPORTS');
-          if (!isElevated && existing.assigned_hr_id !== user.sub) {
+          if (!this.canViewApplication(existing.assigned_hr_id, user)) {
             throw new ConflictException('Conflict: Unauthorized to update this application');
           }
         }
@@ -372,7 +400,7 @@ export class ApplicationsService {
           this.events.emit('ApplicationRejected', { applicationId: updated.id });
         }
         return data;
-      });
+      }, { maxWait: 10000, timeout: 15000 });
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
       throw new InternalServerErrorException('Internal Server Error');
@@ -404,7 +432,7 @@ export class ApplicationsService {
         });
 
         return this.toDetail(updated);
-      });
+      }, { maxWait: 10000, timeout: 15000 });
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
       throw new InternalServerErrorException('Internal Server Error');
@@ -440,12 +468,12 @@ export class ApplicationsService {
   }
 
   private buildWhere(query: QueryApplicationsDto, user?: any): Prisma.applicationsWhereInput {
-    let enforcedHrId = query.assignedHrId;
-    if (user) {
-      const isElevated = user.permissions?.includes('CAREER_ADMIN') || user.permissions?.includes('CAREER_REPORTS');
-      if (!isElevated) {
-        enforcedHrId = user.sub; // Force filter to only show candidates assigned to this HR
-      }
+    const conditions: Prisma.applicationsWhereInput[] = [];
+
+    if (query.scope === 'mine' && user) {
+      conditions.push({ assigned_hr_id: user.sub });
+    } else if (query.assignedHrId) {
+      conditions.push({ assigned_hr_id: query.assignedHrId });
     }
 
     const opportunityWhere: any = {};
@@ -466,7 +494,7 @@ export class ApplicationsService {
       ...(query.departmentId ? { department_id: query.departmentId } : {}),
       ...(query.hiringOpportunityId ? { hiring_opportunity_id: query.hiringOpportunityId } : {}),
       ...(query.status ? { status: query.status } : {}),
-      ...(enforcedHrId ? { assigned_hr_id: enforcedHrId } : {}),
+      ...(conditions.length > 0 ? { AND: conditions } : {}),
       ...(Object.keys(opportunityWhere).length > 0 ? { hiring_opportunity: opportunityWhere } : {}),
       ...(query.dateFrom || query.dateTo
         ? {
@@ -543,6 +571,15 @@ export class ApplicationsService {
             email: application.assigned_hr.email,
           }
         : null,
+      opportunity: application.hiring_opportunity
+        ? {
+            id: application.hiring_opportunity.id,
+            title: application.hiring_opportunity.public_title,
+            internalPosition: application.hiring_opportunity.internal_position,
+            priority: application.hiring_opportunity.hiring_priority,
+          }
+        : null,
+      interviewStatus: application.slot_assignment ? 'SCHEDULED' : 'NOT_SCHEDULED',
       createdAt: application.created_at,
       updatedAt: application.updated_at,
     };
@@ -562,7 +599,41 @@ export class ApplicationsService {
           : application.slot_assignment
             ? 'SLOT_BOOKED'
             : null,
+      files: application.files.map((file) => ({
+        id: file.id,
+      fileName: file.file_name,
+      fileType: file.file_type,
+      bucket: file.bucket,
+        fileSizeKb: file.file_size_kb,
+        mimeType: file.mime_type,
+        createdAt: file.created_at,
+      })),
+      slotAssignment: application.slot_assignment
+        ? {
+            id: application.slot_assignment.id,
+            applicationId: application.slot_assignment.application_id,
+            slotId: application.slot_assignment.slot_id,
+            assignedHrId: application.slot_assignment.assigned_hr_id,
+            assignedAt: application.slot_assignment.assigned_at,
+            slot: {
+              id: application.slot_assignment.slot.id,
+              slotDate: application.slot_assignment.slot.slot_date,
+              slotTime: application.slot_assignment.slot.slot_time,
+            },
+            assignedHr: {
+              id: application.slot_assignment.assigned_hr.id,
+              fullName: application.slot_assignment.assigned_hr.full_name,
+              email: application.slot_assignment.assigned_hr.email,
+            },
+          }
+        : null,
     };
+  }
+
+  private canViewApplication(assignedHrId: string | null, user: any): boolean {
+    const isElevated =
+      user.permissions?.includes('CAREER_ADMIN') || user.permissions?.includes('CAREER_REPORTS');
+    return Boolean(isElevated || assignedHrId === user.sub || assignedHrId === null);
   }
 
   async generateOffer(id: string, payload: any, user: any) {

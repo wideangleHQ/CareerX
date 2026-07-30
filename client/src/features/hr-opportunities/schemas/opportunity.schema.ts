@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+// <input type="number"> yields '' when cleared and undefined when never
+// mounted. Passing either straight into z.coerce.number() is unsafe:
+// Number('') is 0 (silently wrong data) and Number(undefined) is NaN, which
+// fails with the opaque "expected number, received NaN".
+const blankToUndefined = (value: unknown) =>
+  value === '' || value === null ? undefined : value;
+
+const optionalNumber = z.preprocess(blankToUndefined, z.coerce.number().nullish());
+
 export const OpportunityInternalSchema = z.object({
   internal_position: z.string().min(2, 'Internal position is required'),
   department_id: z.string().min(1, 'Department is required'),
@@ -8,7 +17,10 @@ export const OpportunityInternalSchema = z.object({
   career_level: z.enum(['ENTRY_LEVEL', 'JUNIOR', 'MID_LEVEL', 'SENIOR', 'LEAD', 'MANAGER', 'DIRECTOR', 'EXECUTIVE']),
   hiring_manager_id: z.string().optional(),
   reporting_manager_id: z.string().optional(),
-  number_of_openings: z.coerce.number().min(1, 'Must have at least 1 opening'),
+  number_of_openings: z.preprocess(
+    blankToUndefined,
+    z.coerce.number({ error: 'Number of openings is required' }).min(1, 'Must have at least 1 opening'),
+  ),
   internal_notes: z.string().optional(),
 });
 
@@ -16,13 +28,16 @@ export const OpportunityPublicSchema = z.object({
   public_title: z.string().min(2, 'Public title is required'),
   about: z.string().min(10, 'About section is required'),
   responsibilities: z.string().min(10, 'Responsibilities are required'),
-  min_experience_years: z.coerce.number().min(0),
-  max_experience_years: z.coerce.number().nullable().optional(),
+  min_experience_years: z.preprocess(
+    blankToUndefined,
+    z.coerce.number({ error: 'Minimum experience is required' }).min(0, 'Cannot be negative'),
+  ),
+  max_experience_years: optionalNumber,
   educational_qualification: z.string().optional(),
   work_mode: z.enum(['ON_SITE', 'HYBRID', 'REMOTE']),
   location: z.string().min(2, 'Location is required'),
-  min_salary: z.coerce.number().nullable().optional(),
-  max_salary: z.coerce.number().nullable().optional(),
+  min_salary: optionalNumber,
+  max_salary: optionalNumber,
   benefits: z.string().optional(),
   career_growth: z.string().optional(),
 });

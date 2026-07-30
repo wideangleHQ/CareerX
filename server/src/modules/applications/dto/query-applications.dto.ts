@@ -2,7 +2,10 @@ import { BadRequestException } from '@nestjs/common';
 import type { application_status_enum } from '@prisma/client';
 import { parseUuid } from './create-application.dto';
 
+export type ApplicationScope = 'all' | 'mine';
+
 export interface QueryApplicationsDto {
+  scope: ApplicationScope;
   cursor?: string;
   limit: number;
   search?: string;
@@ -23,12 +26,14 @@ export interface QueryApplicationsDto {
   sortOrder: 'asc' | 'desc';
 }
 
-const STATUSES = new Set(['NEW', 'SLOT_BOOKED', 'INTERVIEWED', 'SELECTED', 'OFFER_RELEASED', 'JOINED', 'REJECTED', 'WITHDRAWN']);
+const SCOPES = new Set<ApplicationScope>(['all', 'mine']);
+const STATUSES = new Set(['NEW', 'SLOT_BOOKED', 'INTERVIEWED', 'SHORTLISTED', 'SELECTED', 'OFFER_RELEASED', 'JOINED', 'REJECTED', 'WITHDRAWN']);
 const SORT_FIELDS = new Set(['createdAt', 'updatedAt', 'status', 'candidateName', 'department', 'assignedHr', 'priority']);
 const SORT_ORDERS = new Set(['asc', 'desc']);
 
 export function parseQueryApplicationsDto(query: Record<string, unknown>): QueryApplicationsDto {
   const allowed = new Set([
+    'scope',
     'cursor',
     'limit',
     'search',
@@ -53,7 +58,7 @@ export function parseQueryApplicationsDto(query: Record<string, unknown>): Query
     throw new BadRequestException('Validation Error: Unknown query parameter');
   }
 
-  const cursor = parseOptionalString(query.cursor, 80);
+  const cursor = query.cursor ? parseUuid(query.cursor) : undefined;
   const search = parseOptionalString(query.search, 100);
   const departmentId = query.departmentId ? parseUuid(query.departmentId) : undefined;
   const hiringOpportunityId = query.hiringOpportunityId ? parseUuid(query.hiringOpportunityId) : undefined;
@@ -68,12 +73,16 @@ export function parseQueryApplicationsDto(query: Record<string, unknown>): Query
   const workMode = parseOptionalString(query.workMode, 50);
   const location = parseOptionalString(query.location, 100);
   
-  const minExperience = query.minExperience !== undefined ? Number(query.minExperience) : undefined;
-  const maxExperience = query.maxExperience !== undefined ? Number(query.maxExperience) : undefined;
+  const minExperience = parseExperience(query.minExperience);
+  const maxExperience = parseExperience(query.maxExperience);
 
   if (dateFrom && dateTo && dateFrom > dateTo) throw new BadRequestException('Validation Error');
+  if (minExperience !== undefined && maxExperience !== undefined && minExperience > maxExperience) {
+    throw new BadRequestException('Validation Error');
+  }
 
   return {
+    scope: parseScope(query.scope),
     ...(cursor ? { cursor } : {}),
     limit: parseLimit(query.limit),
     ...(search ? { search } : {}),
@@ -132,6 +141,13 @@ function parseDate(value: unknown): Date | undefined {
   return date;
 }
 
+function parseExperience(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const parsed = typeof value === 'number' || typeof value === 'string' ? Number(value) : Number.NaN;
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 100) throw new BadRequestException('Validation Error');
+  return parsed;
+}
+
 function parseSortBy(value: unknown): QueryApplicationsDto['sortBy'] {
   if (value === undefined || value === null || value === '') return 'createdAt';
   if (typeof value !== 'string' || !SORT_FIELDS.has(value)) {
@@ -146,4 +162,12 @@ function parseSortOrder(value: unknown): QueryApplicationsDto['sortOrder'] {
     throw new BadRequestException('Validation Error');
   }
   return value as QueryApplicationsDto['sortOrder'];
+}
+
+function parseScope(value: unknown): ApplicationScope {
+  if (value === undefined || value === null || value === '') return 'all';
+  if (typeof value !== 'string' || !SCOPES.has(value as ApplicationScope)) {
+    throw new BadRequestException('Validation Error');
+  }
+  return value as ApplicationScope;
 }

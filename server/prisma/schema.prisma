@@ -200,6 +200,7 @@ model candidate_files {
   id             String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   application_id String                   @db.Uuid
   file_type      candidate_file_type_enum
+  bucket         String                   @default("candidate-documents") @db.VarChar(100)
   file_name      String                   @db.VarChar(255)
   storage_path   String                   @db.VarChar(500) // Supabase path, career-resumes / career-org-proofs
   file_size_kb   Int?

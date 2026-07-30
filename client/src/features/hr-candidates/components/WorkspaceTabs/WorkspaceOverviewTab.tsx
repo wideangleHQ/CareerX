@@ -27,15 +27,15 @@ export function WorkspaceOverviewTab({ candidate, application }: WorkspaceOvervi
             <Phone className="h-4 w-4 text-neutral-400 shrink-0" />
             <div>
               <p className="text-xs text-muted-foreground">Phone</p>
-              <p className="font-semibold text-black mt-0.5">{candidate.mobile_number}</p>
+              <p className="font-semibold text-black mt-0.5">{candidate.mobileNumber}</p>
             </div>
           </div>
-          {candidate.whatsapp_number && (
+          {candidate.whatsappNumber && (
             <div className="flex items-center gap-3 text-sm">
               <Phone className="h-4 w-4 text-green-500 shrink-0" />
               <div>
                 <p className="text-xs text-muted-foreground">WhatsApp</p>
-                <p className="font-semibold text-black mt-0.5">{candidate.whatsapp_number}</p>
+                <p className="font-semibold text-black mt-0.5">{candidate.whatsappNumber}</p>
               </div>
             </div>
           )}
@@ -50,7 +50,7 @@ export function WorkspaceOverviewTab({ candidate, application }: WorkspaceOvervi
           <CardContent className="p-6 space-y-4">
             <div>
               <p className="text-xs text-muted-foreground mb-1">Self Description</p>
-              <p className="text-sm text-neutral-700 whitespace-pre-wrap">{application.self_description}</p>
+              <p className="text-sm text-neutral-700 whitespace-pre-wrap">{application.selfDescription}</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-neutral-100">
@@ -60,7 +60,7 @@ export function WorkspaceOverviewTab({ candidate, application }: WorkspaceOvervi
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Application Date</p>
-                <p className="text-sm font-semibold mt-0.5">{new Date(application.created_at).toLocaleDateString()}</p>
+                <p className="text-sm font-semibold mt-0.5">{new Date(application.createdAt).toLocaleDateString()}</p>
               </div>
             </div>
           </CardContent>

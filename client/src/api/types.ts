@@ -2,7 +2,10 @@ export type ApplicationStatus =
   | 'NEW'
   | 'SLOT_BOOKED'
   | 'INTERVIEWED'
+  | 'SHORTLISTED'
   | 'SELECTED'
+  | 'OFFER_RELEASED'
+  | 'JOINED'
   | 'REJECTED'
   | 'WITHDRAWN';
 
@@ -46,24 +49,43 @@ export interface HrEmployee {
   is_active: boolean;
 }
 
+// Mirrors CandidateResponseDto — the API serialises camelCase.
 export interface Candidate {
   id: string;
-  full_name: string;
+  fullName: string;
   email: string;
-  mobile_number: string;
-  whatsapp_number: string | null;
-  created_at: string;
+  mobileNumber: string;
+  whatsappNumber: string | null;
+  createdAt: string;
+  updatedAt?: string;
 }
 
+// Mirrors CandidateFileDto. storage_path is intentionally absent — it never
+// leaves the server; downloads go through a short-lived signed URL.
 export interface CandidateFile {
   id: string;
-  application_id: string;
-  file_type: CandidateFileType;
-  file_name: string;
-  storage_path: string;
-  file_size_kb: number | null;
-  mime_type: string | null;
-  created_at: string;
+  fileName: string;
+  fileType: CandidateFileType;
+  bucket: string;
+  fileSizeKb: number | null;
+  mimeType: string | null;
+  createdAt: string;
+}
+
+export interface CandidateFileListResponse {
+  success: boolean;
+  data: CandidateFile[];
+  pagination: CursorPagination;
+}
+
+export interface SignedUrlResponse {
+  success: boolean;
+  data: {
+    url: string;
+    fileName: string;
+    mimeType: string | null;
+    expiresInSeconds: number;
+  };
 }
 
 export interface InterviewSlot {
@@ -106,13 +128,13 @@ export interface InterviewFeedback {
   hr?: HrEmployee;
 }
 
+// Mirrors HrNoteDto.
 export interface HrNote {
   id: string;
-  application_id: string;
-  hr_id: string;
+  applicationId: string;
+  hr: { id: string; fullName: string; email: string };
   note: string;
-  created_at: string;
-  hr?: HrEmployee;
+  createdAt: string;
 }
 
 export interface StatusHistory {
@@ -126,31 +148,52 @@ export interface StatusHistory {
   changed_by?: HrEmployee | null;
 }
 
+// Mirrors ApplicationListItemDto / ApplicationDetailDto. The API returns
+// camelCase and a flattened shape — it does NOT return the raw Prisma row, so
+// there are no *_id scalars or nested files/history collections here.
 export interface Application {
   id: string;
-  application_code: string;
-  candidate_id: string;
-  department_id: string;
-  self_description: string;
+  applicationCode: string;
   status: ApplicationStatus;
-  assigned_hr_id: string | null;
-  rejection_reason: string | null;
-  created_at: string;
-  updated_at: string;
-  candidate: Candidate;
-  department: Department;
-  assigned_hr: HrEmployee | null;
-  files: CandidateFile[];
-  slot_assignment: SlotAssignment | null;
-  interview_feedback: InterviewFeedback[];
-  hr_notes: HrNote[];
-  status_history: StatusHistory[];
+  candidate: { id: string; fullName: string; email: string; mobileNumber: string };
+  department: { id: string; name: string };
+  assignedHr: { id: string; fullName: string; email: string } | null;
+  opportunity: {
+    id: string;
+    title: string;
+    internalPosition: string;
+    priority: string;
+  } | null;
+  interviewStatus: 'NOT_SCHEDULED' | 'SCHEDULED' | 'FEEDBACK_SUBMITTED';
+  createdAt: string;
+  updatedAt: string;
+  // Detail-only fields (present on findOne / mutation responses).
+  selfDescription?: string;
+  rejectionReason?: string | null;
+  notesCount?: number;
+  latestInterviewStatus?: string | null;
+  // NOT currently returned by ApplicationDetailDto. The workspace Documents
+  // and Interview tabs read these and therefore render empty — surfacing them
+  // needs the server DTO to include them (tracked separately).
+  files?: CandidateFile[];
+  slotAssignment?: {
+    id: string;
+    applicationId: string;
+    slotId: string;
+    assignedHrId: string;
+    assignedAt: string;
+    slot: { id: string; slotDate: string; slotTime: string };
+    assignedHr: { id: string; fullName: string; email: string };
+  } | null;
 }
 
 // Must match the server's allowed query keys exactly — unknown keys are
 // rejected with 400 (parseQueryApplicationsDto allow-list). Sorting is
 // cursor-based (no page param) and sortBy values are camelCase.
+export type ApplicationScope = 'all' | 'mine';
+
 export interface QueryApplicationsParams {
+  scope?: ApplicationScope;
   cursor?: string;
   limit?: number;
   search?: string;
@@ -171,26 +214,34 @@ export interface QueryApplicationsParams {
   sortOrder?: 'asc' | 'desc';
 }
 
+// Must match the server's allowed keys exactly — unknown keys are rejected
+// with 400 (parseCandidateQuery allow-list). Pagination is cursor-based.
 export interface QueryCandidatesParams {
-  page?: number;
+  cursor?: string;
   limit?: number;
   search?: string;
+  sortBy?: 'createdAt' | 'fullName' | 'email';
+  sortOrder?: 'asc' | 'desc';
+}
+
+// Both list endpoints are cursor-paginated. They do NOT return total/page/
+// totalPages — reading those yielded undefined and rendered as 0.
+export interface CursorPagination {
+  limit: number;
+  nextCursor: string | null;
+  hasMore: boolean;
 }
 
 export interface ApplicationListResponse {
+  success: boolean;
   data: Application[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  pagination: CursorPagination;
 }
 
 export interface CandidateListResponse {
-  data: (Candidate & { applications: Application[] })[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  success: boolean;
+  data: Candidate[];
+  pagination: CursorPagination;
 }
 
 export interface SlotListResponse {

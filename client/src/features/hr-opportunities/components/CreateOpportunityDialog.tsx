@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, type FieldErrors } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { toast } from 'sonner';
 import { OpportunityWizardSchema, type OpportunityWizardData } from '../schemas/opportunity.schema';
 import { useCreateOpportunity, useUpdateOpportunity } from '../hooks/useOpportunityMutations';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -19,6 +20,34 @@ interface CreateOpportunityDialogProps {
   opportunityToEdit?: any;
 }
 
+// Which wizard step owns which field. Used both to validate a single step on
+// "Next" and to jump back to the offending step when a submit is rejected.
+const STEP_FIELDS: Record<number, (keyof OpportunityWizardData)[]> = {
+  1: ['internal_position', 'department_id', 'hiring_priority', 'hiring_type', 'career_level', 'number_of_openings'],
+  2: ['public_title', 'about', 'responsibilities', 'work_mode', 'location', 'min_experience_years', 'max_experience_years'],
+  3: ['resume_required', 'employment_proof_required'],
+};
+
+const EMPTY_OPPORTUNITY: Partial<OpportunityWizardData> = {
+  department_id: '',
+  internal_position: '',
+  number_of_openings: 1,
+  hiring_priority: 'MEDIUM',
+  hiring_type: 'FULL_TIME',
+  career_level: 'MID_LEVEL',
+  work_mode: 'ON_SITE',
+  public_title: '',
+  about: '',
+  // Previously absent from the defaults: an untouched field stays `undefined`,
+  // which the schema rejects while no error was ever rendered for it.
+  responsibilities: '',
+  location: '',
+  min_experience_years: 0,
+  max_experience_years: null,
+  resume_required: true,
+  employment_proof_required: false,
+};
+
 export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit }: CreateOpportunityDialogProps) {
   const [step, setStep] = useState(1);
   const createMutation = useCreateOpportunity();
@@ -31,22 +60,23 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
   const departments = deptsRes?.data || [];
 
   const form = useForm<OpportunityWizardData>({
-    resolver: zodResolver(OpportunityWizardSchema),
-    defaultValues: opportunityToEdit || {
-      department_id: '',
-      internal_position: '',
-      number_of_openings: 1,
-      hiring_priority: 'MEDIUM',
-      hiring_type: 'FULL_TIME',
-      career_level: 'MID_LEVEL',
-      work_mode: 'ON_SITE',
-      public_title: '',
-      about: '',
-      location: '',
-      resume_required: true,
-      employment_proof_required: false,
-    },
+    resolver: zodResolver(OpportunityWizardSchema) as never,
+    defaultValues: (opportunityToEdit
+      ? { ...EMPTY_OPPORTUNITY, ...opportunityToEdit }
+      : EMPTY_OPPORTUNITY) as OpportunityWizardData,
   });
+
+  // Without this, a rejected submit is a silent no-op: no mutation, no request,
+  // no message. Surface it and jump back to the step that owns the first error.
+  const onInvalid = (errors: FieldErrors<OpportunityWizardData>) => {
+    const failed = Object.keys(errors);
+    const target = [1, 2, 3].find((s) => STEP_FIELDS[s]!.some((f) => failed.includes(f)));
+    if (target) setStep(target);
+    // Name the fields: a generic "fill all fields" is useless when the form
+    // looks complete on screen.
+    const labels = failed.map((f) => f.replace(/_/g, ' ')).join(', ');
+    toast.error(`Please check: ${labels}`);
+  };
 
   const onSubmit = (data: OpportunityWizardData) => {
     if (opportunityToEdit) {
@@ -63,34 +93,36 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
   const isLastStep = step === 4;
 
   const handleNext = async () => {
-    let fieldsToValidate: any[] = [];
-    if (step === 1) fieldsToValidate = ['internal_position', 'department_id', 'hiring_priority', 'hiring_type', 'career_level', 'number_of_openings'];
-    if (step === 2) fieldsToValidate = ['public_title', 'about', 'responsibilities', 'work_mode', 'location', 'min_experience_years'];
-    if (step === 3) fieldsToValidate = ['resume_required', 'employment_proof_required'];
-
-    const isValid = await form.trigger(fieldsToValidate);
-    if (isValid) setStep(step + 1);
+    const isValid = await form.trigger(STEP_FIELDS[step] ?? []);
+    if (isValid) {
+      setStep(step + 1);
+    } else {
+      toast.error('Please fix the highlighted fields to continue.');
+    }
   };
+
+  // Every required field needs a visible error, otherwise a blocked wizard
+  // looks like a dead button.
+  const Err = ({ name }: { name: keyof OpportunityWizardData }) => {
+    const message = form.formState.errors[name]?.message;
+    return message ? <span className="text-xs text-red-500">{String(message)}</span> : null;
+  };
+
+  // Base UI's Select emits `null` when the current selection is re-toggled or
+  // cleared. Writing that into the form leaves the trigger looking populated
+  // while the enum/uuid check fails, so ignore it and keep the current value.
+  const selectHandler =
+    (field: { onChange: (value: string) => void }) =>
+    (value: string | null) => {
+      if (value !== null) field.onChange(value);
+    };
 
   return (
     <Dialog modal={false} open={open} onOpenChange={(val) => {
       onOpenChange(val);
       if (!val) {
         setStep(1);
-        form.reset({
-          department_id: '',
-          internal_position: '',
-          number_of_openings: 1,
-          hiring_priority: 'MEDIUM',
-          hiring_type: 'FULL_TIME',
-          career_level: 'MID_LEVEL',
-          work_mode: 'ON_SITE',
-          public_title: '',
-          about: '',
-          location: '',
-          resume_required: true,
-          employment_proof_required: false,
-        });
+        form.reset(EMPTY_OPPORTUNITY as OpportunityWizardData);
       }
     }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -101,7 +133,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+        <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6 py-4">
           
           {step === 1 && (
             <div className="grid grid-cols-2 gap-4">
@@ -116,8 +148,15 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                   control={form.control}
                   name="department_id"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
-                      <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
+                    <Select onValueChange={selectHandler(field)} value={field.value ?? ''}>
+                      <SelectTrigger>
+                        {/* Render the department name; the raw value is a UUID. */}
+                        <SelectValue placeholder="Select Department">
+                          {(value: string) =>
+                            departments.find((d: any) => d.id === value)?.name ?? 'Select Department'
+                          }
+                        </SelectValue>
+                      </SelectTrigger>
                       <SelectContent>
                         {departments.map((d: any) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                       </SelectContent>
@@ -133,7 +172,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                   control={form.control}
                   name="hiring_type"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                    <Select onValueChange={selectHandler(field)} value={field.value ?? ''}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="FULL_TIME">Full Time</SelectItem>
@@ -145,6 +184,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                     </Select>
                   )}
                 />
+                <Err name="hiring_type" />
               </div>
 
               <div className="space-y-2">
@@ -153,7 +193,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                   control={form.control}
                   name="career_level"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                    <Select onValueChange={selectHandler(field)} value={field.value ?? ''}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ENTRY_LEVEL">Entry Level</SelectItem>
@@ -168,11 +208,13 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                     </Select>
                   )}
                 />
+                <Err name="career_level" />
               </div>
 
               <div className="space-y-2">
                 <Label>Number of Openings</Label>
                 <Input type="number" {...form.register('number_of_openings')} />
+                <Err name="number_of_openings" />
               </div>
 
               <div className="space-y-2">
@@ -181,7 +223,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                   control={form.control}
                   name="hiring_priority"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                    <Select onValueChange={selectHandler(field)} value={field.value ?? ''}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="LOW">Low</SelectItem>
@@ -192,6 +234,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                     </Select>
                   )}
                 />
+                <Err name="hiring_priority" />
               </div>
               
               <div className="col-span-2 space-y-2">
@@ -218,6 +261,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
               <div className="space-y-2 col-span-2">
                 <Label>Responsibilities</Label>
                 <Textarea {...form.register('responsibilities')} className="min-h-[100px]" />
+                <Err name="responsibilities" />
               </div>
 
               <div className="space-y-2">
@@ -226,7 +270,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                   control={form.control}
                   name="work_mode"
                   render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                    <Select onValueChange={selectHandler(field)} value={field.value ?? ''}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ON_SITE">On-Site</SelectItem>
@@ -236,20 +280,24 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                     </Select>
                   )}
                 />
+                <Err name="work_mode" />
               </div>
 
               <div className="space-y-2">
                 <Label>Location</Label>
                 <Input {...form.register('location')} placeholder="e.g. New York, NY" />
+                <Err name="location" />
               </div>
 
               <div className="space-y-2">
                 <Label>Min Experience (Years)</Label>
                 <Input type="number" {...form.register('min_experience_years')} />
+                <Err name="min_experience_years" />
               </div>
               <div className="space-y-2">
                 <Label>Max Experience (Years)</Label>
                 <Input type="number" {...form.register('max_experience_years')} />
+                <Err name="max_experience_years" />
               </div>
             </div>
           )}

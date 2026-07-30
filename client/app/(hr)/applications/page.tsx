@@ -1,29 +1,36 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { applicationsApi } from '@/src/api/applications';
 import { ApplicationFilters } from '@/src/features/hr-applications/components/ApplicationFilters';
 import { ApplicationTable } from '@/src/features/hr-applications/components/ApplicationTable';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Loader2, ListFilter } from 'lucide-react';
-import type { ApplicationStatus, QueryApplicationsParams } from '@/src/api/types';
+import { ChevronLeft, ChevronRight, ListFilter, Users, User } from 'lucide-react';
+import type { ApplicationScope, ApplicationStatus, QueryApplicationsParams } from '@/src/api/types';
 
 export default function ApplicationsPage() {
+  const [scope, setScope] = useState<ApplicationScope>('all');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string>('ALL');
   const [departmentId, setDepartmentId] = useState<string>('ALL');
 
-  // Cursor-based pagination states
   const [limit] = useState(10);
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>([undefined]);
   const [currentPage, setCurrentPage] = useState(1);
 
+  const resetPagination = useCallback(() => {
+    setCursor(undefined);
+    setCursorHistory([undefined]);
+    setCurrentPage(1);
+  }, []);
+
   const { data: response, isLoading } = useQuery({
-    queryKey: ['applications', search, status, departmentId, cursor, limit],
+    queryKey: ['applications', scope, search, status, departmentId, cursor, limit],
     queryFn: async () => {
       const params: QueryApplicationsParams = {
+        scope,
         limit,
         sortBy: 'createdAt',
         sortOrder: 'desc',
@@ -62,9 +69,14 @@ export default function ApplicationsPage() {
     setSearch('');
     setStatus('ALL');
     setDepartmentId('ALL');
-    setCursor(undefined);
-    setCursorHistory([undefined]);
-    setCurrentPage(1);
+    resetPagination();
+  };
+
+  const handleScopeChange = (newScope: ApplicationScope) => {
+    if (newScope !== scope) {
+      setScope(newScope);
+      resetPagination();
+    }
   };
 
   return (
@@ -78,27 +90,47 @@ export default function ApplicationsPage() {
         </p>
       </div>
 
+      {/* Scope tabs */}
+      <div className="flex gap-1 border-b">
+        <button
+          onClick={() => handleScopeChange('all')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px cursor-pointer ${
+            scope === 'all'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-neutral-300'
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          All Applications
+        </button>
+        <button
+          onClick={() => handleScopeChange('mine')}
+          className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px cursor-pointer ${
+            scope === 'mine'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground hover:border-neutral-300'
+          }`}
+        >
+          <User className="h-4 w-4" />
+          My Applications
+        </button>
+      </div>
+
       <ApplicationFilters
         search={search}
         onSearchChange={(val) => {
           setSearch(val);
-          setCursor(undefined);
-          setCursorHistory([undefined]);
-          setCurrentPage(1);
+          resetPagination();
         }}
         status={status}
         onStatusChange={(val) => {
           setStatus(val);
-          setCursor(undefined);
-          setCursorHistory([undefined]);
-          setCurrentPage(1);
+          resetPagination();
         }}
         departmentId={departmentId}
         onDepartmentIdChange={(val) => {
           setDepartmentId(val);
-          setCursor(undefined);
-          setCursorHistory([undefined]);
-          setCurrentPage(1);
+          resetPagination();
         }}
         onClear={handleClearFilters}
       />
@@ -106,7 +138,6 @@ export default function ApplicationsPage() {
       <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
         <ApplicationTable applications={applications} isLoading={isLoading} />
 
-        {/* Pagination Toolbar */}
         {!isLoading && applications.length > 0 && (
           <div className="flex items-center justify-between border-t px-6 py-4 bg-neutral-50/50">
             <span className="text-xs font-semibold text-neutral-500">

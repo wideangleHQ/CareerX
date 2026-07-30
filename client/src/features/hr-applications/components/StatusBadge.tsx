@@ -17,8 +17,14 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         return 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50';
       case 'INTERVIEWED':
         return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50';
+      case 'SHORTLISTED':
+        return 'bg-cyan-50 text-cyan-700 border-cyan-200 hover:bg-cyan-50';
       case 'SELECTED':
         return 'bg-green-600 text-white border-green-700 hover:bg-green-600';
+      case 'OFFER_RELEASED':
+        return 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-50';
+      case 'JOINED':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50';
       case 'REJECTED':
         return 'bg-red-50 text-red-700 border-red-200 hover:bg-red-50';
       case 'WITHDRAWN':
@@ -30,13 +36,19 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
   const getLabel = () => {
     switch (status) {
       case 'NEW':
-        return 'New';
+        return 'Pending Review';
       case 'SLOT_BOOKED':
         return 'Slot Booked';
       case 'INTERVIEWED':
-        return 'Interviewed';
+        return 'Interview Scheduled';
       case 'SELECTED':
         return 'Selected';
+      case 'SHORTLISTED':
+        return 'Shortlisted';
+      case 'OFFER_RELEASED':
+        return 'Offer Sent';
+      case 'JOINED':
+        return 'Hired';
       case 'REJECTED':
         return 'Rejected';
       case 'WITHDRAWN':

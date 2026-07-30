@@ -74,7 +74,7 @@ export function OfferTable({ offers, isLoading }: OfferTableProps) {
                   <Link href={`/offers/${offer.id}`} className="hover:underline">
                     <div className="flex flex-col">
                       <span className="font-medium text-neutral-900">
-                        {offer.application?.candidate?.full_name || '—'}
+                        {offer.application?.candidate?.fullName || '—'}
                       </span>
                       <span className="text-xs text-neutral-500">
                         {offer.application?.candidate?.email || '—'}
@@ -130,7 +130,7 @@ export function OfferTable({ offers, isLoading }: OfferTableProps) {
               <div className="flex items-start justify-between">
                 <div>
                   <p className="font-medium text-neutral-900">
-                    {offer.application?.candidate?.full_name || '—'}
+                    {offer.application?.candidate?.fullName || '—'}
                   </p>
                   <p className="text-xs text-neutral-500 mt-0.5">
                     {offer.department?.name || '—'}

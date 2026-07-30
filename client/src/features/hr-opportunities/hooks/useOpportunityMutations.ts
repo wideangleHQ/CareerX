@@ -12,6 +12,8 @@ export const useCreateOpportunity = () => {
     onSuccess: () => {
       toast.success('Opportunity created successfully');
       queryClient.invalidateQueries({ queryKey: opportunityKeys.all });
+      // "Open Positions" counts published opportunities.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to create opportunity');
@@ -29,6 +31,7 @@ export const useUpdateOpportunity = () => {
       toast.success('Opportunity updated successfully');
       queryClient.invalidateQueries({ queryKey: opportunityKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: opportunityKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to update opportunity');
@@ -46,6 +49,7 @@ export const useUpdateOpportunityStatus = () => {
       toast.success(`Opportunity status updated to ${variables.status}`);
       queryClient.invalidateQueries({ queryKey: opportunityKeys.detail(variables.id) });
       queryClient.invalidateQueries({ queryKey: opportunityKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to update status');
@@ -61,6 +65,8 @@ export const useDeleteOpportunity = () => {
     onSuccess: () => {
       toast.success('Opportunity deleted successfully');
       queryClient.invalidateQueries({ queryKey: opportunityKeys.all });
+      // "Open Positions" counts published opportunities.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to delete opportunity');

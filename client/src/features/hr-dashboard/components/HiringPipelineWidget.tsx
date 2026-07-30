@@ -1,43 +1,32 @@
 'use client';
 
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { applicationsApi } from '@/src/api/applications';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useDashboardStats } from '../hooks/useDashboardStats';
 import type { ApplicationStatus } from '@/src/api/types';
 
 const PIPELINE_STAGES: { status: ApplicationStatus; label: string; color: string }[] = [
   { status: 'NEW', label: 'Applied', color: 'bg-blue-500' },
   { status: 'SLOT_BOOKED', label: 'Interview Scheduled', color: 'bg-amber-500' },
   { status: 'INTERVIEWED', label: 'Interviewed', color: 'bg-purple-500' },
+  { status: 'SHORTLISTED', label: 'Shortlisted', color: 'bg-cyan-500' },
   { status: 'SELECTED', label: 'Selected', color: 'bg-green-500' },
+  { status: 'OFFER_RELEASED', label: 'Offer Sent', color: 'bg-indigo-500' },
+  { status: 'JOINED', label: 'Hired', color: 'bg-emerald-600' },
   { status: 'REJECTED', label: 'Rejected', color: 'bg-red-400' },
   { status: 'WITHDRAWN', label: 'Withdrawn', color: 'bg-neutral-400' },
 ];
 
-function usePipelineCounts() {
-  const q0 = useQuery({ queryKey: ['dashboard', 'pipeline', 'NEW'], queryFn: () => applicationsApi.findAll({ status: 'NEW', limit: 1 }) });
-  const q1 = useQuery({ queryKey: ['dashboard', 'pipeline', 'SLOT_BOOKED'], queryFn: () => applicationsApi.findAll({ status: 'SLOT_BOOKED', limit: 1 }) });
-  const q2 = useQuery({ queryKey: ['dashboard', 'pipeline', 'INTERVIEWED'], queryFn: () => applicationsApi.findAll({ status: 'INTERVIEWED', limit: 1 }) });
-  const q3 = useQuery({ queryKey: ['dashboard', 'pipeline', 'SELECTED'], queryFn: () => applicationsApi.findAll({ status: 'SELECTED', limit: 1 }) });
-  const q4 = useQuery({ queryKey: ['dashboard', 'pipeline', 'REJECTED'], queryFn: () => applicationsApi.findAll({ status: 'REJECTED', limit: 1 }) });
-  const q5 = useQuery({ queryKey: ['dashboard', 'pipeline', 'WITHDRAWN'], queryFn: () => applicationsApi.findAll({ status: 'WITHDRAWN', limit: 1 }) });
-
-  const queries = [q0, q1, q2, q3, q4, q5];
-
-  return {
-    isLoading: queries.some((q) => q.isLoading),
-    counts: queries.map((q) => q.data?.total ?? 0),
-  };
-}
-
 export function HiringPipelineWidget() {
-  const { isLoading, counts } = usePipelineCounts();
+  // Reads the per-status tally from /dashboard/stats. The previous version
+  // fired six list requests and read `q.data.total`, a field the cursor-based
+  // list response never returns — so every bar rendered 0.
+  const { isLoading, byStatus } = useDashboardStats();
 
-  const stages = PIPELINE_STAGES.map((stage, i) => ({
+  const stages = PIPELINE_STAGES.map((stage) => ({
     ...stage,
-    count: counts[i],
+    count: byStatus?.[stage.status] ?? 0,
   }));
 
   const maxCount = Math.max(...stages.map((s) => s.count), 1);

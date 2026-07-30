@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import axiosClient from '@/src/api/client';
 import { opportunitiesApi } from '@/src/api/opportunities';
+import type { ApplicationStatus } from '@/src/api/types';
+
+export type StatusTally = Record<ApplicationStatus, number>;
 
 export function useDashboardStats() {
   const stats = useQuery({
@@ -25,14 +28,21 @@ export function useDashboardStats() {
   });
 
   const isLoading = stats.isLoading || offerStats.isLoading;
+  const d = stats.data?.data;
+  const o = offerStats.data?.data;
 
   return {
     isLoading,
-    totalApplications: stats.data?.data?.totalApplications ?? 0,
-    newApplications: stats.data?.data?.newApplications ?? 0,
-    selectedCount: stats.data?.data?.hiredCount ?? 0,
-    interviewsScheduled: stats.data?.data?.interviewsScheduled ?? 0,
-    offers: offerStats.data?.data ?? null,
+    totalApplications: d?.totalApplications ?? 0,
+    newApplications: d?.newApplications ?? 0,
+    interviewsScheduled: d?.interviewsScheduled ?? 0,
+    selectedCount: d?.selectedCount ?? 0,
+    // Per-status tally powering the pipeline widget, so it reads from the same
+    // snapshot as the KPI cards instead of issuing its own requests.
+    byStatus: (d?.byStatus ?? null) as StatusTally | null,
+    releasedOffers: o?.releasedOffers ?? 0,
+    acceptedOffers: o?.acceptedOffers ?? 0,
+    joinedCount: o?.joinedCount ?? 0,
     openPositions: hiringData.data?.data?.length ?? 0,
   };
 }

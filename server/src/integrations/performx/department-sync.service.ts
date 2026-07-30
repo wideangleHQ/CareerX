@@ -1,5 +1,6 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { RedisService } from '../../redis/redis.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 export interface PerformxDepartmentItem {
   id: string;
@@ -8,7 +9,7 @@ export interface PerformxDepartmentItem {
 
 const CACHE_KEY = 'performx:departments';
 const CACHE_TTL_SECONDS = 10 * 60;
-const TIMEOUT_MS = 8000;
+const TIMEOUT_MS = 3000;
 
 @Injectable()
 export class DepartmentSyncService {
@@ -16,7 +17,10 @@ export class DepartmentSyncService {
   private readonly baseUrl: string;
   private readonly apiKey: string;
 
-  constructor(private readonly redis: RedisService) {
+  constructor(
+    private readonly redis: RedisService,
+    private readonly prisma: PrismaService,
+  ) {
     this.baseUrl = process.env.PERFORMX_API_URL ?? '';
     this.apiKey = process.env.PERFORMX_INTERNAL_API_KEY ?? '';
   }
@@ -136,6 +140,15 @@ export class DepartmentSyncService {
         // Stale cache is unreadable
       }
     }
+
+    const localDepartments = await this.prisma.departments.findMany({
+      select: { id: true, name: true },
+    });
+    if (localDepartments.length > 0) {
+      this.logger.warn('Serving departments from local sync');
+      return localDepartments;
+    }
+
     throw new ServiceUnavailableException(
       'Department data unavailable: PerformX is unreachable and no cached data exists',
     );

@@ -3,7 +3,7 @@ import { candidatesApi } from '@/src/api/candidates';
 import { timelineApi } from '@/src/api/timeline';
 import { offersApi } from '@/src/api/offers';
 
-export function useCandidateWorkspace(candidateId: string) {
+export function useCandidateWorkspace(candidateId: string, applicationId?: string) {
   // 1. Fetch Candidate Profile (includes applications)
   const { data: candidateRes, isLoading: isLoadingCandidate } = useQuery({
     queryKey: ['candidate-profile', candidateId],
@@ -15,7 +15,7 @@ export function useCandidateWorkspace(candidateId: string) {
   const applications = (candidate as any)?.applications || [];
   
   // Default to the first application, or null if none
-  const activeApplication = applications[0] || null;
+  const activeApplication = (applicationId ? applications.find((item: { id: string }) => item.id === applicationId) : null) || applications[0] || null;
   const activeApplicationId = activeApplication?.id;
 
   // 2. Fetch Timeline for active application

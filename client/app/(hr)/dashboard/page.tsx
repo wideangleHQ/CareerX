@@ -75,19 +75,19 @@ export default function DashboardPage() {
           />
           <StatCard
             title="Offers Released"
-            value={stats.offers?.RELEASED ?? 0}
+            value={stats.releasedOffers}
             description="Awaiting candidate response"
             icon={<Send className="h-4.5 w-4.5 text-blue-500" />}
           />
           <StatCard
             title="Offers Accepted"
-            value={stats.offers?.ACCEPTED ?? 0}
+            value={stats.acceptedOffers}
             description="Candidates who accepted"
             icon={<CheckCircle className="h-4.5 w-4.5 text-green-500" />}
           />
           <StatCard
             title="Joined"
-            value={stats.offers?.JOINED ?? 0}
+            value={stats.joinedCount}
             description="Candidates who have joined"
             icon={<UserCheck className="h-4.5 w-4.5 text-emerald-600" />}
           />

@@ -7,7 +7,7 @@ import type { ExchangeResponseDto } from './dto/exchange.dto';
 import type { RefreshResponseDto } from './dto/refresh.dto';
 import { clearAuthCookies, readCookie, setAuthCookies } from './utils/auth-cookie.util';
 import { CareerJwtAuthGuard } from '../../common/guards/career-jwt-auth.guard';
-import { verifyCareerJwt } from './utils/jwt.util';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import type { CareerJwtPayload } from './interfaces/auth.interfaces';
 
 @Controller('auth')
@@ -59,14 +59,9 @@ export class AuthController {
     return result;
   }
 
-  // ─── Session check ───────────────────────────────────────────────────────────
-  // Reads career_at, verifies the Career JWT, returns the authenticated HR profile.
-  // Never touches the PerformX JWT.
   @Get('me')
   @UseGuards(CareerJwtAuthGuard)
-  me(@Req() request: Request): CareerJwtPayload {
-    const token = readCookie(request.headers.cookie, AUTH_COOKIES.access);
-    if (!token) throw new UnauthorizedException('Unauthorized');
-    return verifyCareerJwt(token);
+  me(@CurrentUser() user: CareerJwtPayload): CareerJwtPayload {
+    return user;
   }
 }

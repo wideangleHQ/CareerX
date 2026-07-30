@@ -12,7 +12,7 @@ interface WorkspaceInterviewTabProps {
 export function WorkspaceInterviewTab({ application }: WorkspaceInterviewTabProps) {
   if (!application) return null;
 
-  const slotAssignment = application.slot_assignment;
+  const slotAssignment = application.slotAssignment;
   
   return (
     <div className="space-y-6">
@@ -59,9 +59,9 @@ export function WorkspaceInterviewTab({ application }: WorkspaceInterviewTabProp
                   <div>
                     <p className="text-xs text-muted-foreground">Interviewer</p>
                     <p className="text-sm font-semibold mt-0.5">
-                      {slotAssignment.assigned_hr?.full_name || 'Unassigned'}
+                      {slotAssignment.assignedHr?.fullName || 'Unassigned'}
                     </p>
-                    <p className="text-xs text-neutral-500">{slotAssignment.assigned_hr?.email}</p>
+                    <p className="text-xs text-neutral-500">{slotAssignment.assignedHr?.email}</p>
                   </div>
                 </div>
               </div>

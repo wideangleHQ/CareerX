@@ -12,6 +12,9 @@ export function useUpdateApplicationStatus() {
       queryClient.invalidateQueries({ queryKey: ['applications'] });
       queryClient.invalidateQueries({ queryKey: ['application-details', variables.id] });
       queryClient.invalidateQueries({ queryKey: ['pending-applications-widget'] });
+      // Every dashboard metric is derived from application status, so the
+      // whole ['dashboard', ...] prefix is stale after a transition.
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

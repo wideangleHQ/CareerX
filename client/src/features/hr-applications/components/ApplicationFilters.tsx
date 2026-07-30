@@ -34,13 +34,13 @@ export function ApplicationFilters({
   });
 
   const statuses: { label: string; value: ApplicationStatus | 'ALL' }[] = [
-    { label: 'All Statuses', value: 'ALL' },
-    { label: 'New', value: 'NEW' },
+    { label: 'All', value: 'ALL' },
+    { label: 'Pending Review', value: 'NEW' },
     { label: 'Slot Booked', value: 'SLOT_BOOKED' },
-    { label: 'Interviewed', value: 'INTERVIEWED' },
-    { label: 'Selected', value: 'SELECTED' },
+    { label: 'Interview Scheduled', value: 'INTERVIEWED' },
+    { label: 'Offer Sent', value: 'OFFER_RELEASED' },
+    { label: 'Hired', value: 'JOINED' },
     { label: 'Rejected', value: 'REJECTED' },
-    { label: 'Withdrawn', value: 'WITHDRAWN' },
   ];
 
   const hasActiveFilters = search || status !== 'ALL' || departmentId !== 'ALL';
@@ -61,7 +61,7 @@ export function ApplicationFilters({
 
         {/* Department Filter */}
         <div className="w-full sm:max-w-[180px]">
-          <Select value={departmentId} onValueChange={onDepartmentIdChange}>
+          <Select value={departmentId} onValueChange={(value) => value && onDepartmentIdChange(value)}>
             <SelectTrigger className="h-9">
               <SelectValue placeholder="All Departments" />
             </SelectTrigger>
@@ -78,7 +78,7 @@ export function ApplicationFilters({
 
         {/* Status Filter */}
         <div className="w-full sm:max-w-[180px]">
-          <Select value={status} onValueChange={onStatusChange}>
+          <Select value={status} onValueChange={(value) => value && onStatusChange(value)}>
             <SelectTrigger className="h-9">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>

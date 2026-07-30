@@ -60,7 +60,7 @@ export function OfferDetailView({ offer }: OfferDetailViewProps) {
           </Link>
           <div>
             <h1 className="text-2xl font-bold text-black flex items-center gap-3">
-              {offer.application?.candidate?.full_name || 'Offer Details'}
+              {offer.application?.candidate?.fullName || 'Offer Details'}
               <OfferStatusBadge status={offer.status} />
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -148,7 +148,7 @@ export function OfferDetailView({ offer }: OfferDetailViewProps) {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Name</p>
-                <p className="text-sm font-semibold text-neutral-900">{offer.application.candidate.full_name}</p>
+                <p className="text-sm font-semibold text-neutral-900">{offer.application.candidate.fullName}</p>
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Email</p>
@@ -156,7 +156,7 @@ export function OfferDetailView({ offer }: OfferDetailViewProps) {
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold mb-1">Mobile</p>
-                <p className="text-sm text-neutral-700">{offer.application.candidate.mobile_number}</p>
+                <p className="text-sm text-neutral-700">{offer.application.candidate.mobileNumber}</p>
               </div>
             </div>
           </CardContent>

@@ -35,6 +35,11 @@ export const applicationsApi = {
     return data;
   },
 
+  getTimeline: async (id: string): Promise<{ success: boolean; data: Array<Record<string, unknown>> }> => {
+    const { data } = await axiosClient.get(`/api/v1/applications/${id}/timeline`);
+    return data;
+  },
+
   updateStatus: async (
     id: string,
     payload: { status: ApplicationStatus; reason?: string }
@@ -67,6 +72,16 @@ export const applicationsApi = {
 
   getNotes: async (applicationId: string): Promise<{ success: boolean; data: HrNote[] }> => {
     const { data } = await axiosClient.get(`/api/v1/hr-notes/application/${applicationId}`);
+    return data;
+  },
+
+  // Server allows the note's creator, or CAREER_ADMIN. Deletion is
+  // intentionally disabled server-side, so no delete method is exposed.
+  updateNote: async (
+    id: string,
+    note: string
+  ): Promise<{ success: boolean; data: HrNote }> => {
+    const { data } = await axiosClient.patch(`/api/v1/hr-notes/${id}`, { note });
     return data;
   },
 

@@ -3,22 +3,19 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Download, ExternalLink } from 'lucide-react';
+import { FileText, Download, ExternalLink, Loader2 } from 'lucide-react';
 import type { CandidateFile } from '@/src/api/types';
+import { useFileAction } from '../hooks/useCandidateFiles';
+import { FilePreviewDialog } from './FilePreviewDialog';
 
 interface ResumePreviewProps {
   files: CandidateFile[];
 }
 
 export function ResumePreview({ files }: ResumePreviewProps) {
-  const resume = files.find((f) => f.file_type === 'RESUME') || files[0];
-
-  const handleDownload = () => {
-    if (!resume) return;
-    // Construct signed Supabase URL or link
-    const url = `http://localhost:3000/api/v1/storage/resumes/${resume.storage_path}`; // Mock URL
-    window.open(url, '_blank');
-  };
+  const resume = files.find((f) => f.fileType === 'RESUME') || files[0];
+  const fileAction = useFileAction();
+  const [previewOpen, setPreviewOpen] = React.useState(false);
 
   if (!resume) {
     return (
@@ -28,25 +25,52 @@ export function ResumePreview({ files }: ResumePreviewProps) {
     );
   }
 
+  const isBusy = fileAction.isPending;
+
   return (
+    <>
     <Card className="border-neutral-200 bg-neutral-50/50 shadow-none">
-      <CardContent className="p-4 flex items-center justify-between text-sm">
-        <div className="flex items-center gap-3">
-          <div className="rounded-lg bg-green-50 p-2.5 text-primary">
+      <CardContent className="p-4 flex items-center justify-between gap-3 text-sm">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="rounded-lg bg-green-50 p-2.5 text-primary shrink-0">
             <FileText className="h-6 w-6" />
           </div>
-          <div>
-            <p className="font-semibold text-black max-w-[260px] truncate">{resume.file_name}</p>
+          <div className="min-w-0">
+            <p className="font-semibold text-black max-w-[260px] truncate">{resume.fileName}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {resume.file_size_kb ? `${resume.file_size_kb} KB` : 'Unknown size'} • {resume.file_type}
+              {resume.fileSizeKb ? `${resume.fileSizeKb} KB` : 'Unknown size'} • {resume.fileType}
             </p>
           </div>
         </div>
-        <Button size="xs" variant="outline" onClick={handleDownload} className="cursor-pointer">
-          <Download className="h-3.5 w-3.5 mr-1" /> Download
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={isBusy}
+            onClick={() => setPreviewOpen(true)}
+            className="cursor-pointer"
+          >
+            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Preview
+          </Button>
+          <Button
+            size="xs"
+            variant="outline"
+            disabled={isBusy}
+            onClick={() => fileAction.mutate({ file: resume, mode: 'download' })}
+            className="cursor-pointer"
+          >
+            {isBusy ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            ) : (
+              <Download className="h-3.5 w-3.5 mr-1" />
+            )}
+            Download
+          </Button>
+        </div>
       </CardContent>
     </Card>
+    <FilePreviewDialog file={previewOpen ? resume : null} onClose={() => setPreviewOpen(false)} />
+    </>
   );
 }
 export default ResumePreview;

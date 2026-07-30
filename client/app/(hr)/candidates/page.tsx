@@ -12,20 +12,48 @@ import Link from 'next/link';
 
 export default function CandidatesPage() {
   const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
   const [limit] = useState(15);
+  // Cursor pagination: the API rejects a `page` param with 400.
+  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [cursorHistory, setCursorHistory] = useState<(string | undefined)[]>([undefined]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: response, isLoading } = useQuery({
-    queryKey: ['candidates', search, page, limit],
+    queryKey: ['candidates', search, cursor, limit],
     queryFn: () =>
       candidatesApi.findAll({
-        search: search || undefined,
-        page,
+        ...(search ? { search } : {}),
+        ...(cursor ? { cursor } : {}),
         limit,
       }),
   });
 
   const candidates = response?.data || [];
+  const pagination = response?.pagination;
+
+  const resetPaging = () => {
+    setCursor(undefined);
+    setCursorHistory([undefined]);
+    setCurrentPage(1);
+  };
+
+  const handleNextPage = () => {
+    if (pagination?.hasMore && pagination.nextCursor) {
+      const next = pagination.nextCursor;
+      setCursorHistory((prev) => [...prev, next]);
+      setCursor(next);
+      setCurrentPage((prev) => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      const prevIndex = currentPage - 2;
+      setCursor(cursorHistory[prevIndex]);
+      setCursorHistory((prev) => prev.slice(0, prevIndex + 1));
+      setCurrentPage((prev) => prev - 1);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -45,7 +73,7 @@ export default function CandidatesPage() {
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
-            setPage(1);
+            resetPaging();
           }}
           placeholder="Search candidates by name, email..."
           className="pl-9 h-9"
@@ -84,12 +112,12 @@ export default function CandidatesPage() {
                 {candidates.map((cand) => (
                   <TableRow key={cand.id}>
                     <TableCell className="font-semibold text-black">
-                      {cand.full_name}
+                      {cand.fullName}
                     </TableCell>
                     <TableCell className="text-neutral-600">{cand.email}</TableCell>
-                    <TableCell className="text-neutral-600">{cand.mobile_number}</TableCell>
+                    <TableCell className="text-neutral-600">{cand.mobileNumber}</TableCell>
                     <TableCell className="text-xs text-neutral-500">
-                      {new Date(cand.created_at).toLocaleDateString()}
+                      {new Date(cand.createdAt).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="text-right">
                       <Link href={`/candidates/${cand.id}`}>
@@ -102,6 +130,30 @@ export default function CandidatesPage() {
                 ))}
               </TableBody>
             </Table>
+
+            <div className="flex items-center justify-between border-t px-6 py-4 bg-neutral-50/50">
+              <span className="text-xs font-semibold text-neutral-500">Page {currentPage}</span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePrevPage}
+                  disabled={currentPage === 1}
+                  className="cursor-pointer"
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextPage}
+                  disabled={!pagination?.hasMore}
+                  className="cursor-pointer"
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           </>
         )}
       </div>

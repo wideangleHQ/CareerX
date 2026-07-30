@@ -41,16 +41,22 @@ export class OpportunitiesController {
     return this.service.findOne(id);
   }
 
+  // Editing and publishing are content changes on an opportunity, so they sit
+  // behind CAREER_EDIT — the same permission that creates one, and the same
+  // one applications use for PATCH :id/status. Requiring CAREER_ADMIN here made
+  // the draft -> publish flow unreachable: no role that holds CAREER_EDIT also
+  // holds CAREER_ADMIN, so the author of a draft could never publish it.
+  // Deletion stays CAREER_ADMIN below.
   @Patch(':id')
   @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
-  @RequirePermissions('CAREER_ADMIN')
+  @RequirePermissions('CAREER_EDIT')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() body: any) {
     return this.service.update(id, body);
   }
 
   @Patch(':id/status')
   @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
-  @RequirePermissions('CAREER_ADMIN')
+  @RequirePermissions('CAREER_EDIT')
   updateStatus(@Param('id', ParseUUIDPipe) id: string, @Body() body: any) {
     return this.service.updateStatus(id, body);
   }

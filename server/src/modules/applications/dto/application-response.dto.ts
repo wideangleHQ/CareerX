@@ -7,6 +7,8 @@ export interface ApplicationListItemDto {
   candidate: { id: string; fullName: string; email: string; mobileNumber: string };
   department: { id: string; name: string };
   assignedHr: { id: string; fullName: string; email: string } | null;
+  opportunity: { id: string; title: string; internalPosition: string; priority: string } | null;
+  interviewStatus: 'NOT_SCHEDULED' | 'SCHEDULED' | 'FEEDBACK_SUBMITTED';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,6 +18,24 @@ export interface ApplicationDetailDto extends ApplicationListItemDto {
   rejectionReason: string | null;
   notesCount: number;
   latestInterviewStatus: string | null;
+  files: Array<{
+    id: string;
+    fileName: string;
+    fileType: string;
+    bucket: string;
+    fileSizeKb: number | null;
+    mimeType: string | null;
+    createdAt: Date;
+  }>;
+  slotAssignment: {
+    id: string;
+    applicationId: string;
+    slotId: string;
+    assignedHrId: string;
+    assignedAt: Date;
+    slot: { id: string; slotDate: Date; slotTime: Date };
+    assignedHr: { id: string; fullName: string; email: string };
+  } | null;
 }
 
 export interface ApplicationMutationResponseDto {

@@ -8,6 +8,7 @@ import { CandidatesModule } from './modules/candidates/candidates.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { DepartmentsModule } from './modules/departments/departments.module';
 import { EmailModule } from './modules/email/email.module';
+import { FilesModule } from './modules/files/files.module';
 import { HrNotesModule } from './modules/hr-notes/hr-notes.module';
 import { InterviewFeedbackModule } from './modules/interview-feedback/interview-feedback.module';
 import { InterviewSlotsModule } from './modules/interview-slots/interview-slots.module';
@@ -33,6 +34,7 @@ import { QueueConfigModule } from './common/queue/queue-config.module';
     ApplicationsModule,
     InterviewSlotsModule,
     EmailModule,
+    FilesModule,
     HrNotesModule,
     InterviewFeedbackModule,
     NotificationsModule,

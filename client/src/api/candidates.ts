@@ -24,7 +24,7 @@ export const candidatesApi = {
 
   update: async (
     id: string,
-    payload: Partial<Pick<Candidate, 'full_name' | 'email' | 'mobile_number' | 'whatsapp_number'>>
+    payload: Partial<Pick<Candidate, 'fullName' | 'email' | 'mobileNumber' | 'whatsappNumber'>>
   ): Promise<{ success: boolean; data: Candidate }> => {
     const { data } = await axiosClient.patch(`/api/v1/candidates/${id}`, payload);
     return data;

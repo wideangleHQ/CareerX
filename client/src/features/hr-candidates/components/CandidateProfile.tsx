@@ -8,6 +8,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Download, Phone, Mail, MessageCircle, FileSignature, CheckCircle, Briefcase, ChevronDown } from 'lucide-react';
 import { cn } from '@/src/lib/utils';
+import { toast } from 'sonner';
+import { useCandidateFiles, useFileAction } from '../hooks/useCandidateFiles';
 
 // Tabs imports
 import { WorkspaceOverviewTab } from './WorkspaceTabs/WorkspaceOverviewTab';
@@ -21,9 +23,10 @@ import { WorkspaceActivityTab } from './WorkspaceTabs/WorkspaceActivityTab';
 
 interface CandidateProfileProps {
   candidateId: string;
+  applicationId?: string;
 }
 
-export function CandidateProfile({ candidateId }: CandidateProfileProps) {
+export function CandidateProfile({ candidateId, applicationId }: CandidateProfileProps) {
   const {
     candidate,
     activeApplication,
@@ -34,9 +37,49 @@ export function CandidateProfile({ candidateId }: CandidateProfileProps) {
     isLoadingTimeline,
     isLoadingActivity,
     isLoadingOffer
-  } = useCandidateWorkspace(candidateId);
+  } = useCandidateWorkspace(candidateId, applicationId);
 
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Quick Actions. Files are shared with the Documents tab via one query key,
+  // so opening the tab does not refetch.
+  const { files } = useCandidateFiles(activeApplication?.id);
+  const fileAction = useFileAction();
+
+  const resume = files.find((f) => f.fileType === 'RESUME') ?? null;
+  // E.164-ish: optional +, 8-15 digits once separators are stripped.
+  const rawPhone = candidate?.mobileNumber?.trim() ?? '';
+  const dialablePhone = rawPhone.replace(/[\s()-]/g, '');
+  const hasPhone = /^\+?[1-9]\d{7,14}$/.test(dialablePhone);
+  const email = candidate?.email?.trim() ?? '';
+  const hasEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const handleCall = () => {
+    if (!hasPhone) {
+      toast.error('No valid phone number on file for this candidate.');
+      return;
+    }
+    window.location.href = `tel:${dialablePhone}`;
+  };
+
+  const handleEmail = () => {
+    if (!hasEmail) {
+      toast.error('No valid email address on file for this candidate.');
+      return;
+    }
+    const subject = activeApplication?.applicationCode
+      ? `Regarding your application ${activeApplication.applicationCode}`
+      : 'Regarding your application';
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}`;
+  };
+
+  const handleDownloadResume = () => {
+    if (!resume) {
+      toast.error('No resume has been uploaded for this application.');
+      return;
+    }
+    fileAction.mutate({ file: resume, mode: 'download' });
+  };
 
   if (isLoading) {
     return (
@@ -55,7 +98,7 @@ export function CandidateProfile({ candidateId }: CandidateProfileProps) {
   }
 
   // Derived properties
-  const initials = candidate.full_name
+  const initials = candidate.fullName
     .split(' ')
     .map((n) => n[0])
     .join('')
@@ -84,7 +127,7 @@ export function CandidateProfile({ candidateId }: CandidateProfileProps) {
             </div>
             
             <h1 className="text-xl font-bold text-center text-black leading-tight">
-              {candidate.full_name}
+              {candidate.fullName}
             </h1>
             
             {activeApplication && (
@@ -98,7 +141,7 @@ export function CandidateProfile({ candidateId }: CandidateProfileProps) {
             </p>
             
             <p className="text-[10px] text-neutral-400 mt-1 uppercase tracking-wider font-semibold">
-              App ID: {activeApplication?.application_code || 'N/A'}
+              App ID: {activeApplication?.applicationCode || 'N/A'}
             </p>
           </CardContent>
         </Card>
@@ -106,16 +149,43 @@ export function CandidateProfile({ candidateId }: CandidateProfileProps) {
         <Card className="border-neutral-200">
           <CardContent className="p-4 space-y-2">
             <h3 className="text-xs font-bold text-neutral-400 uppercase tracking-wider mb-3 px-2">Quick Actions</h3>
-            <Button variant="ghost" className="w-full justify-start text-sm cursor-pointer hover:bg-blue-50 hover:text-blue-600 h-9">
-              <Download className="mr-2 h-4 w-4" /> Download Resume
+            <Button
+              variant="ghost"
+              onClick={handleDownloadResume}
+              disabled={!resume || fileAction.isPending}
+              title={resume ? undefined : 'No resume uploaded'}
+              className="w-full justify-start text-sm cursor-pointer hover:bg-blue-50 hover:text-blue-600 h-9"
+            >
+              {fileAction.isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="mr-2 h-4 w-4" />
+              )}
+              Download Resume
             </Button>
-            <Button variant="ghost" className="w-full justify-start text-sm cursor-pointer hover:bg-green-50 hover:text-green-600 h-9">
+            <Button
+              variant="ghost"
+              onClick={handleCall}
+              disabled={!hasPhone}
+              title={hasPhone ? `Call ${dialablePhone}` : 'No phone number on file'}
+              className="w-full justify-start text-sm cursor-pointer hover:bg-green-50 hover:text-green-600 h-9"
+            >
               <Phone className="mr-2 h-4 w-4" /> Call Candidate
             </Button>
-            <Button variant="ghost" className="w-full justify-start text-sm cursor-pointer hover:bg-purple-50 hover:text-purple-600 h-9">
+            <Button
+              variant="ghost"
+              onClick={handleEmail}
+              disabled={!hasEmail}
+              title={hasEmail ? `Email ${email}` : 'No email address on file'}
+              className="w-full justify-start text-sm cursor-pointer hover:bg-purple-50 hover:text-purple-600 h-9"
+            >
               <Mail className="mr-2 h-4 w-4" /> Email Candidate
             </Button>
-            <Button variant="ghost" className="w-full justify-start text-sm cursor-pointer hover:bg-amber-50 hover:text-amber-600 h-9">
+            <Button
+              variant="ghost"
+              onClick={() => setActiveTab('notes')}
+              className="w-full justify-start text-sm cursor-pointer hover:bg-amber-50 hover:text-amber-600 h-9"
+            >
               <MessageCircle className="mr-2 h-4 w-4" /> Add HR Note
             </Button>
             <Button variant="default" className="w-full justify-start text-sm cursor-pointer bg-neutral-900 hover:bg-neutral-800 h-9 mt-4">
