@@ -1,10 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
-import { AppConfig } from '@/src/config/app';
-
-const API_URL = AppConfig.apiUrl;
 
 const axiosClient: AxiosInstance = axios.create({
-  baseURL: API_URL,
+  baseURL: '',
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
   timeout: 15000,

@@ -14,9 +14,6 @@ export class OpportunitiesService {
   ) {}
 
   async create(dto: any) {
-    this.logger.log('=== CREATE OPPORTUNITY START ===');
-    this.logger.log('Incoming body:', JSON.stringify(dto, null, 2));
-
     try {
       // Validate required fields
       const requiredFields = ['internal_position', 'department_id', 'public_title', 'location'];
@@ -80,8 +77,6 @@ export class OpportunitiesService {
         // created_at and updated_at have @default(now())
       };
 
-      this.logger.log('Prisma create payload:', JSON.stringify(createData, null, 2));
-
       const opportunity = await this.prisma.hiring_opportunities.create({
         data: createData,
       });
@@ -90,21 +85,11 @@ export class OpportunitiesService {
         await this.syncDepartmentHiringFlag(createData.department_id);
       }
 
-      this.logger.log('Opportunity created successfully:', opportunity.id);
-
       return {
         success: true,
         data: opportunity,
       };
     } catch (error: any) {
-      this.logger.error('=== CREATE OPPORTUNITY FAILED ===');
-      this.logger.error('Error name:', error.name);
-      this.logger.error('Error code:', error.code);
-      this.logger.error('Error message:', error.message);
-      this.logger.error('Error meta:', JSON.stringify(error.meta, null, 2));
-      this.logger.error('Full error:', JSON.stringify(error, null, 2));
-      this.logger.error('Stack trace:', error.stack);
-
       // Handle specific Prisma errors
       if (error.code === 'P2002') {
         throw new BadRequestException('Duplicate entry: ' + JSON.stringify(error.meta));
@@ -215,28 +200,49 @@ export class OpportunitiesService {
 
   async findAll(query: any) {
     const limit = query.limit ? parseInt(query.limit, 10) : 20;
+    const page = query.page ? parseInt(query.page, 10) : 1;
+    const skip = (page - 1) * limit;
     const status = query.status;
+    const sortField = query.sortField || 'created_at';
+    const sortOrder = query.sortOrder || 'desc';
 
     const where: any = {};
     if (status) where.status = status;
+    if (query.departmentId) where.department_id = query.departmentId;
+    if (query.search) {
+      where.OR = [
+        { public_title: { contains: query.search, mode: 'insensitive' } },
+        { internal_position: { contains: query.search, mode: 'insensitive' } },
+      ];
+    }
 
-    const opportunities = await this.prisma.hiring_opportunities.findMany({
-      where,
-      take: limit,
-      orderBy: { created_at: 'desc' },
-      include: {
-        department: {
-          select: {
-            id: true,
-            name: true,
+    const [opportunities, total] = await Promise.all([
+      this.prisma.hiring_opportunities.findMany({
+        where,
+        take: limit,
+        skip,
+        orderBy: { [sortField]: sortOrder },
+        include: {
+          department: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+          _count: {
+            select: { applications: true },
           },
         },
-      },
-    });
+      }),
+      this.prisma.hiring_opportunities.count({ where }),
+    ]);
 
     return {
       success: true,
       data: opportunities,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
     };
   }
 
@@ -264,12 +270,35 @@ export class OpportunitiesService {
   }
 
   async update(id: string, dto: any) {
+    const ALLOWED_FIELDS = new Set([
+      'internal_position', 'department_id', 'number_of_openings',
+      'hiring_priority', 'hiring_type', 'confidentiality_level',
+      'hiring_manager_id', 'reporting_manager_id', 'internal_notes',
+      'public_title', 'career_level', 'work_mode', 'location',
+      'min_experience_years', 'max_experience_years',
+      'educational_qualification', 'min_salary', 'max_salary',
+      'application_deadline', 'about', 'responsibilities',
+      'benefits', 'career_growth', 'preferred_industry',
+      'preferred_languages', 'certifications', 'age_limit',
+      'resume_required', 'employment_proof_required',
+      'interview_rounds', 'interview_location', 'meeting_link',
+      'status', 'visibility',
+    ]);
+
+    const updateData: Record<string, any> = { updated_at: new Date() };
+    for (const key of Object.keys(dto)) {
+      if (ALLOWED_FIELDS.has(key)) {
+        if (key === 'application_deadline' && dto[key]) {
+          updateData[key] = new Date(dto[key]);
+        } else {
+          updateData[key] = dto[key];
+        }
+      }
+    }
+
     const opportunity = await this.prisma.hiring_opportunities.update({
       where: { id },
-      data: {
-        ...dto,
-        updated_at: new Date(),
-      },
+      data: updateData,
     });
 
     if (dto.status || dto.department_id) {
@@ -312,20 +341,24 @@ export class OpportunitiesService {
   }
 
   async getStats() {
-    const [total, draft, published, closed] = await Promise.all([
+    const [total, draft, published, closed, archived, totalApplications] = await Promise.all([
       this.prisma.hiring_opportunities.count(),
       this.prisma.hiring_opportunities.count({ where: { status: 'DRAFT' } }),
       this.prisma.hiring_opportunities.count({ where: { status: 'PUBLISHED' } }),
       this.prisma.hiring_opportunities.count({ where: { status: 'CLOSED' } }),
+      this.prisma.hiring_opportunities.count({ where: { status: 'ARCHIVED' } }),
+      this.prisma.applications.count(),
     ]);
 
     return {
       success: true,
       data: {
         total,
-        draft,
-        published,
-        closed,
+        DRAFT: draft,
+        PUBLISHED: published,
+        CLOSED: closed,
+        ARCHIVED: archived,
+        totalApplications,
       },
     };
   }

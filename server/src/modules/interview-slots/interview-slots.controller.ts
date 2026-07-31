@@ -9,9 +9,11 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CareerJwtAuthGuard } from '../../common/guards/career-jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import type { CareerJwtPayload } from '../auth/interfaces/auth.interfaces';
 import { parseBookSlotDto } from './dto/book-slot.dto';
 import { parseBulkGenerateSlotsDto } from './dto/bulk-generate-slots.dto';
 import { parseCreateSlotDto } from './dto/create-slot.dto';
@@ -44,8 +46,16 @@ export class InterviewSlotsController {
   @Get()
   @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
   @RequirePermissions('CAREER_VIEW')
-  findAll(@Query() query: Record<string, unknown>): Promise<SlotListResponse> {
-    return this.interviewSlotsService.findAll(parseQuerySlotsDto(query));
+  findAll(
+    @Query() query: Record<string, unknown>,
+    @CurrentUser() user: CareerJwtPayload,
+  ): Promise<SlotListResponse> {
+    const parsed = parseQuerySlotsDto(query);
+    const isAdmin = user.permissions?.includes('CAREER_ADMIN');
+    if (!isAdmin) {
+      parsed.hrId = user.sub;
+    }
+    return this.interviewSlotsService.findAll(parsed);
   }
 
   @Get('available')
@@ -60,8 +70,11 @@ export class InterviewSlotsController {
 
   @Delete(':id')
   @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
-  @RequirePermissions('CAREER_ADMIN')
-  remove(@Param('id', new ParseUUIDPipe()) id: string): Promise<{ success: true }> {
-    return this.interviewSlotsService.remove(id);
+  @RequirePermissions('CAREER_INTERVIEW')
+  remove(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: CareerJwtPayload,
+  ): Promise<{ success: true }> {
+    return this.interviewSlotsService.remove(id, user.sub);
   }
 }

@@ -82,7 +82,11 @@ const applicationListSelect = {
     select: { id: true, public_title: true, internal_position: true, hiring_priority: true },
   },
   slot_assignment: {
-    select: { id: true },
+    select: {
+      id: true,
+      slot: { select: { slot_date: true, slot_time: true } },
+      assigned_hr: { select: { id: true, full_name: true } },
+    },
   },
   files: {
     select: { id: true, file_name: true, file_type: true, mime_type: true },
@@ -560,7 +564,8 @@ export class ApplicationsService {
     if (query.sortBy === 'assignedHr') return [{ assigned_hr: { full_name: order } }];
     if (query.sortBy === 'priority') return [{ hiring_opportunity: { hiring_priority: order } }];
     if (query.sortBy === 'status') return [{ status: order }];
-    
+    if (query.sortBy === 'interviewDate') return [{ slot_assignment: { slot: { slot_date: order } } }, { slot_assignment: { slot: { slot_time: order } } }, { id: 'asc' }];
+
     // Default or explicitly createdAt/updatedAt
     const field = query.sortBy === 'updatedAt' ? 'updated_at' : 'created_at';
     return [{ [field]: order }, { id: 'asc' }];
@@ -613,6 +618,11 @@ export class ApplicationsService {
           }
         : null,
       interviewStatus: application.slot_assignment ? 'SCHEDULED' : 'NOT_SCHEDULED',
+      interviewDate: application.slot_assignment?.slot.slot_date ?? null,
+      interviewTime: application.slot_assignment?.slot.slot_time ?? null,
+      interviewer: application.slot_assignment?.assigned_hr
+        ? { id: application.slot_assignment.assigned_hr.id, fullName: application.slot_assignment.assigned_hr.full_name }
+        : null,
       resumeFile: application.files[0]
         ? {
             id: application.files[0].id,

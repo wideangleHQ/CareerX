@@ -9,6 +9,9 @@ export interface ApplicationListItemDto {
   assignedHr: { id: string; fullName: string; email: string } | null;
   opportunity: { id: string; title: string; internalPosition: string; priority: string } | null;
   interviewStatus: 'NOT_SCHEDULED' | 'SCHEDULED' | 'FEEDBACK_SUBMITTED';
+  interviewDate: Date | null;
+  interviewTime: Date | null;
+  interviewer: { id: string; fullName: string } | null;
   resumeFile: { id: string; fileName: string; mimeType: string | null } | null;
   createdAt: Date;
   updatedAt: Date;

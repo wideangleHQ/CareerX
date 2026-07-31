@@ -23,13 +23,13 @@ export interface QueryApplicationsDto {
   location?: string;
   minExperience?: number;
   maxExperience?: number;
-  sortBy: 'createdAt' | 'updatedAt' | 'status' | 'candidateName' | 'department' | 'assignedHr' | 'priority';
+  sortBy: 'createdAt' | 'updatedAt' | 'status' | 'candidateName' | 'department' | 'assignedHr' | 'priority' | 'interviewDate';
   sortOrder: 'asc' | 'desc';
 }
 
 const SCOPES = new Set<ApplicationScope>(['all', 'mine']);
 const STATUSES = new Set(['NEW', 'SLOT_BOOKED', 'INTERVIEWED', 'SHORTLISTED', 'SELECTED', 'OFFER_RELEASED', 'JOINED', 'REJECTED', 'WITHDRAWN']);
-const SORT_FIELDS = new Set(['createdAt', 'updatedAt', 'status', 'candidateName', 'department', 'assignedHr', 'priority']);
+const SORT_FIELDS = new Set(['createdAt', 'updatedAt', 'status', 'candidateName', 'department', 'assignedHr', 'priority', 'interviewDate']);
 const SORT_ORDERS = new Set(['asc', 'desc']);
 
 export function parseQueryApplicationsDto(query: Record<string, unknown>): QueryApplicationsDto {

@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -244,55 +245,13 @@ export class InterviewSlotsService {
         });
         if (updatedSlot.count !== 1) throw new ConflictException('Conflict: Slot is already booked');
 
-        // HR Assignment Engine - Load Balancing
-        const eligibleRoles = await tx.hr_role_permissions.findMany({
-          where: { permission: 'CAREER_INTERVIEW' },
-          select: { performx_role: true }
-        });
-        const roles = eligibleRoles.map(r => r.performx_role);
-
-        const hrUsers = await tx.hr_employees.findMany({
-          where: {
-            is_active: true,
-            performx_role: { in: roles },
-            OR: [
-              { department_id: application.department_id },
-              { department_id: null }
-            ]
-          },
-          select: {
-            id: true,
-            _count: {
-              select: { 
-                applications: { 
-                  where: { 
-                    status: { notIn: ['REJECTED', 'JOINED', 'WITHDRAWN'] },
-                    deleted_at: null 
-                  } 
-                } 
-              }
-            }
-          }
-        });
-
-        if (hrUsers.length === 0) {
-          throw new ConflictException('Conflict: No eligible HR found for assignment');
-        }
-
-        hrUsers.sort((a, b) => {
-          if (a._count.applications !== b._count.applications) {
-            return a._count.applications - b._count.applications;
-          }
-          return a.id.localeCompare(b.id); // Deterministic tie-breaking
-        });
-
-        const selectedHrId = hrUsers[0]!.id;
+        const slotOwnerHrId = slot.hr_id;
 
         const created = await tx.slot_assignments.create({
           data: {
             application_id: dto.applicationId,
             slot_id: dto.slotId,
-            assigned_hr_id: slot.hr_id, // Interviewer HR
+            assigned_hr_id: slotOwnerHrId,
           },
           select: { id: true, assigned_hr_id: true },
         });
@@ -301,37 +260,37 @@ export class InterviewSlotsService {
           where: { id: dto.applicationId },
           data: {
             status: 'SLOT_BOOKED',
-            assigned_hr_id: selectedHrId, // Lifecycle Owner HR
+            assigned_hr_id: slotOwnerHrId,
             updated_at: new Date(),
             status_history: {
               create: {
                 from_status: 'NEW',
                 to_status: 'SLOT_BOOKED',
                 changed_by_id: null,
-                reason: 'Interview booked & HR load-balanced',
+                reason: 'Interview slot booked',
               },
             },
           },
           select: { id: true },
         });
 
-        return { 
-          created, 
-          applicationCode: application.application_code, 
-          slotDate: slot.slot_date, 
+        return {
+          created,
+          applicationCode: application.application_code,
+          slotDate: slot.slot_date,
           slotTime: slot.slot_time,
-          selectedHrId
+          slotOwnerHrId
         };
       });
 
       await this.invalidateAvailableCache();
       this.events.emit('InterviewBooked', {
         applicationId: dto.applicationId,
-        hrId: result.created.assigned_hr_id,
+        hrId: result.slotOwnerHrId,
       });
       this.events.emit('HrAssigned', {
         applicationId: dto.applicationId,
-        hrId: result.selectedHrId,
+        hrId: result.slotOwnerHrId,
       });
 
       return { 
@@ -373,22 +332,32 @@ export class InterviewSlotsService {
     }
   }
 
-  async remove(id: string): Promise<{ success: true }> {
+  async remove(id: string, requestingHrId: string): Promise<{ success: true }> {
     try {
       const slot = await this.prisma.interview_slots.findUnique({
         where: { id },
-        select: { id: true, slot_date: true, slot_time: true, is_booked: true },
+        select: { id: true, hr_id: true, slot_date: true, slot_time: true, is_booked: true },
       });
       if (!slot) throw new NotFoundException('Slot not found');
-      if (slot.is_booked || !this.isFuture(slot.slot_date, slot.slot_time)) {
-        throw new ConflictException('Conflict');
+      if (slot.hr_id !== requestingHrId) {
+        throw new ForbiddenException('You can only delete slots you created');
+      }
+      if (slot.is_booked) {
+        throw new ConflictException('Cannot delete a booked slot');
+      }
+      if (!this.isFuture(slot.slot_date, slot.slot_time)) {
+        throw new ConflictException('Cannot delete a slot in the past');
       }
 
       await this.prisma.interview_slots.delete({ where: { id }, select: { id: true } });
       await this.invalidateAvailableCache();
       return { success: true };
     } catch (error) {
-      if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
+      if (
+        error instanceof NotFoundException ||
+        error instanceof ForbiddenException ||
+        error instanceof ConflictException
+      ) throw error;
       this.logger.error(`remove() failed [id=${id}]`, error instanceof Error ? error.stack : error);
       throw new InternalServerErrorException('Internal Server Error');
     }

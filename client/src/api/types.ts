@@ -165,6 +165,9 @@ export interface Application {
     priority: string;
   } | null;
   interviewStatus: 'NOT_SCHEDULED' | 'SCHEDULED' | 'FEEDBACK_SUBMITTED';
+  interviewDate: string | null;
+  interviewTime: string | null;
+  interviewer: { id: string; fullName: string } | null;
   resumeFile: { id: string; fileName: string; mimeType: string | null } | null;
   createdAt: string;
   updatedAt: string;
@@ -212,7 +215,7 @@ export interface QueryApplicationsParams {
   location?: string;
   minExperience?: number;
   maxExperience?: number;
-  sortBy?: 'createdAt' | 'updatedAt' | 'status' | 'candidateName' | 'department' | 'assignedHr' | 'priority';
+  sortBy?: 'createdAt' | 'updatedAt' | 'status' | 'candidateName' | 'department' | 'assignedHr' | 'priority' | 'interviewDate';
   sortOrder?: 'asc' | 'desc';
 }
 

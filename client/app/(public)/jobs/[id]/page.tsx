@@ -1,26 +1,68 @@
 'use client';
 
 import React from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { opportunitiesApi } from '@/src/api/opportunities';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, Briefcase, Clock, GraduationCap, CheckCircle2, Loader2, DollarSign } from 'lucide-react';
+import { ArrowLeft, MapPin, Briefcase, Clock, GraduationCap, CheckCircle2, Loader2, DollarSign, AlertTriangle } from 'lucide-react';
+
+function mapRawToPublic(opp: any) {
+  return {
+    opportunityId: opp.id,
+    name: opp.public_title,
+    departmentName: opp.department?.name,
+    careerLevel: opp.career_level,
+    employmentType: opp.hiring_type,
+    workMode: opp.work_mode,
+    location: opp.location,
+    experienceRange: opp.max_experience_years
+      ? `${opp.min_experience_years} - ${opp.max_experience_years} Years`
+      : `${opp.min_experience_years}+ Years`,
+    salaryRange: opp.min_salary && opp.max_salary
+      ? `${opp.min_salary} - ${opp.max_salary}`
+      : undefined,
+    about: opp.about || undefined,
+    responsibilities: opp.responsibilities || undefined,
+    benefits: opp.benefits || undefined,
+    careerGrowth: opp.career_growth || undefined,
+    educationalQualification: opp.educational_qualification || undefined,
+    numberOfOpenings: opp.number_of_openings,
+    applicationDeadline: opp.application_deadline || undefined,
+    resumeRequired: opp.resume_required,
+    status: opp.status,
+    requiredSkills: [] as string[],
+    preferredSkills: [] as string[],
+  };
+}
 
 export default function JobDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const id = params?.id as string;
+  const isPreview = searchParams.get('preview') === 'true';
 
-  const { data: res, isLoading, error } = useQuery({
-    queryKey: ['opportunity', id],
+  const publicQuery = useQuery({
+    queryKey: ['opportunity', id, 'public'],
     queryFn: () => opportunitiesApi.findPublic(),
-    enabled: !!id,
+    enabled: !!id && !isPreview,
   });
 
-  const job = (res?.data ?? []).find((j: any) => j.opportunityId === id) as any;
+  const previewQuery = useQuery({
+    queryKey: ['opportunity', id, 'preview'],
+    queryFn: () => opportunitiesApi.findOne(id),
+    enabled: !!id && isPreview,
+  });
+
+  const isLoading = isPreview ? previewQuery.isLoading : publicQuery.isLoading;
+  const error = isPreview ? previewQuery.error : publicQuery.error;
+
+  const job = isPreview
+    ? (previewQuery.data?.data ? mapRawToPublic(previewQuery.data.data) : null)
+    : ((publicQuery.data?.data ?? []).find((j: any) => j.opportunityId === id) as any);
 
   if (isLoading) {
     return (
@@ -44,13 +86,27 @@ export default function JobDetailsPage() {
 
   return (
     <div className="min-h-screen bg-neutral-50 pb-24">
+      {/* Preview Banner */}
+      {isPreview && (
+        <div className="bg-amber-50 border-b border-amber-200 px-6 py-3">
+          <div className="mx-auto max-w-4xl flex items-center gap-2 text-sm font-medium text-amber-800">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span>Preview Mode — This is how candidates will see this opportunity.
+              {job.status && job.status !== 'PUBLISHED' && (
+                <> Status: <strong>{job.status}</strong> (not visible to candidates)</>
+              )}
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="bg-white border-b border-neutral-200 pt-16 pb-12 px-6">
         <div className="mx-auto max-w-4xl">
-          <Link href="/jobs" className="inline-flex items-center text-sm font-medium text-neutral-500 hover:text-neutral-900 mb-6 transition-colors">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to open positions
+          <Link href={isPreview ? '/opportunities' : '/jobs'} className="inline-flex items-center text-sm font-medium text-neutral-500 hover:text-neutral-900 mb-6 transition-colors">
+            <ArrowLeft className="mr-2 h-4 w-4" /> {isPreview ? 'Back to Opportunities' : 'Back to open positions'}
           </Link>
-          
+
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
             <div>
               <h1 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 mb-4 leading-tight">
@@ -74,11 +130,17 @@ export default function JobDetailsPage() {
               </div>
             </div>
             <div className="shrink-0">
-              <Link href={`/apply?opportunityId=${job.opportunityId}`}>
-                <Button size="lg" className="w-full md:w-auto cursor-pointer rounded-full px-8 text-base font-semibold shadow-sm">
+              {isPreview ? (
+                <Button size="lg" disabled className="w-full md:w-auto rounded-full px-8 text-base font-semibold shadow-sm opacity-60">
                   Apply for this position
                 </Button>
-              </Link>
+              ) : (
+                <Link href={`/apply?opportunityId=${job.opportunityId}`}>
+                  <Button size="lg" className="w-full md:w-auto cursor-pointer rounded-full px-8 text-base font-semibold shadow-sm">
+                    Apply for this position
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -87,7 +149,7 @@ export default function JobDetailsPage() {
       {/* Content */}
       <div className="mx-auto max-w-4xl px-6 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className="lg:col-span-2 space-y-10">
-          
+
           {job.about && (
             <section>
               <h2 className="text-xl font-bold text-neutral-900 mb-4">About the role</h2>
@@ -124,6 +186,15 @@ export default function JobDetailsPage() {
               <h2 className="text-xl font-bold text-neutral-900 mb-4">Benefits & Perks</h2>
               <div className="prose prose-neutral max-w-none text-neutral-600 leading-relaxed whitespace-pre-wrap">
                 {job.benefits}
+              </div>
+            </section>
+          )}
+
+          {job.careerGrowth && (
+            <section>
+              <h2 className="text-xl font-bold text-neutral-900 mb-4">Career Growth</h2>
+              <div className="prose prose-neutral max-w-none text-neutral-600 leading-relaxed whitespace-pre-wrap">
+                {job.careerGrowth}
               </div>
             </section>
           )}
@@ -170,11 +241,15 @@ export default function JobDetailsPage() {
                 </li>
               )}
             </ul>
-            
+
             <div className="mt-8 pt-6 border-t border-neutral-100">
-              <Link href={`/apply?opportunityId=${job.opportunityId}`}>
-                <Button className="w-full cursor-pointer rounded-full font-semibold">Apply Now</Button>
-              </Link>
+              {isPreview ? (
+                <Button disabled className="w-full rounded-full font-semibold opacity-60">Apply Now</Button>
+              ) : (
+                <Link href={`/apply?opportunityId=${job.opportunityId}`}>
+                  <Button className="w-full cursor-pointer rounded-full font-semibold">Apply Now</Button>
+                </Link>
+              )}
             </div>
           </div>
         </div>

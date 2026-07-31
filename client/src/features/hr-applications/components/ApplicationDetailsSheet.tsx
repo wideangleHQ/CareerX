@@ -7,8 +7,9 @@ import { useUpdateApplicationStatus } from '../hooks/useUpdateApplicationStatus'
 import { StatusBadge } from './StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Loader2, Mail, Phone, FileText, Clock3, Download, ExternalLink } from 'lucide-react';
+import { Loader2, Mail, Phone, FileText, Clock3, Download, ExternalLink, CalendarDays } from 'lucide-react';
 import type { ApplicationStatus, CandidateFile } from '@/src/api/types';
+import { formatSlotTime } from '@/src/lib/slot-time';
 import { useCandidateFiles, useFileAction } from '@/src/features/hr-candidates/hooks/useCandidateFiles';
 import { FilePreviewDialog } from '@/src/features/hr-candidates/components/FilePreviewDialog';
 
@@ -228,6 +229,27 @@ export function ApplicationDetailsSheet({ applicationId }: ApplicationDetailsShe
                 <p className="font-semibold text-black mt-0.5">
                   {new Date(application.createdAt).toLocaleString()}
                 </p>
+              </div>
+
+              <div className="border-t pt-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5" /> Interview Schedule
+                </p>
+                {application.interviewDate ? (
+                  <div className="mt-1.5 space-y-1">
+                    <p className="font-semibold text-black">
+                      {new Date(application.interviewDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {' '}at {formatSlotTime(application.interviewTime)}
+                    </p>
+                    {application.interviewer && (
+                      <p className="text-xs text-neutral-600">
+                        Interviewer: <span className="font-medium text-black">{application.interviewer.fullName}</span>
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="font-semibold text-neutral-400 mt-0.5 italic">Not Scheduled</p>
+                )}
               </div>
 
               {application.rejectionReason && (

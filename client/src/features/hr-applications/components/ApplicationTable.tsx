@@ -12,6 +12,7 @@ import { candidatesApi } from '@/src/api/candidates';
 import { User, Eye, Mail, Phone, ExternalLink, X, FileText, Download } from 'lucide-react';
 import { useFileAction } from '@/src/features/hr-candidates/hooks/useCandidateFiles';
 import { FilePreviewDialog } from '@/src/features/hr-candidates/components/FilePreviewDialog';
+import { formatSlotTime } from '@/src/lib/slot-time';
 import type { Application } from '@/src/api/types';
 
 interface ApplicationTableProps {
@@ -90,6 +91,9 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
                 <div className="flex items-center gap-3 mt-2 text-[11px] text-neutral-500">
                   <span>Applied {new Date(app.createdAt).toLocaleDateString()}</span>
                   {app.assignedHr && <span>&middot; {app.assignedHr.fullName}</span>}
+                  {app.interviewDate && (
+                    <span>&middot; Interview {new Date(app.interviewDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} {app.interviewTime ? formatSlotTime(app.interviewTime) : ''}</span>
+                  )}
                 </div>
               </div>
               <Button
@@ -115,9 +119,9 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
           <TableHead>Position</TableHead>
           <TableHead>Department</TableHead>
           <TableHead>Assigned HR</TableHead>
-          <TableHead>Interview</TableHead>
+          <TableHead>Interview Date</TableHead>
+          <TableHead>Interview Time</TableHead>
           <TableHead>Applied Date</TableHead>
-          <TableHead>Updated</TableHead>
           <TableHead>Resume</TableHead>
           <TableHead>Priority</TableHead>
           <TableHead>Status</TableHead>
@@ -194,13 +198,17 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
               )}
             </TableCell>
             <TableCell className="text-xs text-neutral-600">
-              {app.interviewStatus === 'SCHEDULED' ? 'Scheduled' : 'Not scheduled'}
+              {app.interviewDate
+                ? new Date(app.interviewDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                : <span className="text-muted-foreground italic">Not Scheduled</span>}
+            </TableCell>
+            <TableCell className="text-xs text-neutral-600">
+              {app.interviewTime
+                ? formatSlotTime(app.interviewTime)
+                : <span className="text-muted-foreground italic">—</span>}
             </TableCell>
             <TableCell className="text-xs text-neutral-600">
               {new Date(app.createdAt).toLocaleDateString()}
-            </TableCell>
-            <TableCell className="text-xs text-neutral-600">
-              {new Date(app.updatedAt).toLocaleDateString()}
             </TableCell>
             <TableCell>
               {app.resumeFile ? (() => {

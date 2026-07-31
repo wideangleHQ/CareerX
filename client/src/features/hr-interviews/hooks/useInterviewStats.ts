@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { interviewsApi } from '@/src/api/interviews';
+import { useAuth } from '@/src/context/AuthContext';
 
 export interface InterviewStats {
   totalSlots: number;
@@ -12,9 +13,11 @@ export interface InterviewStats {
 }
 
 export function useInterviewStats() {
+  const { user } = useAuth();
   const { data: slotsRes, isLoading, error } = useQuery({
-    queryKey: ['slots'],
+    queryKey: ['slots', user?.sub],
     queryFn: () => interviewsApi.findAll(),
+    enabled: !!user?.sub,
   });
 
   const slots = slotsRes?.data || [];

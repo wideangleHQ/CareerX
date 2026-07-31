@@ -52,8 +52,7 @@ export default function OpportunitiesPage() {
   };
 
   const openPreview = (opp: any) => {
-    // In a real application, you might route to a preview page or open a preview dialog
-    window.open(`/career-portal/jobs/${opp.id}`, '_blank');
+    window.open(`/jobs/${opp.id}?preview=true`, '_blank');
   };
 
   return (

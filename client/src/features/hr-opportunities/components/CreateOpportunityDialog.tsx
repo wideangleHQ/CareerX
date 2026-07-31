@@ -23,8 +23,8 @@ interface CreateOpportunityDialogProps {
 // Which wizard step owns which field. Used both to validate a single step on
 // "Next" and to jump back to the offending step when a submit is rejected.
 const STEP_FIELDS: Record<number, (keyof OpportunityWizardData)[]> = {
-  1: ['internal_position', 'department_id', 'hiring_priority', 'hiring_type', 'career_level', 'number_of_openings'],
-  2: ['public_title', 'about', 'responsibilities', 'work_mode', 'location', 'min_experience_years', 'max_experience_years'],
+  1: ['internal_position', 'department_id', 'hiring_priority', 'hiring_type', 'career_level', 'number_of_openings', 'hiring_manager_id', 'reporting_manager_id'],
+  2: ['public_title', 'about', 'responsibilities', 'work_mode', 'location', 'min_experience_years', 'max_experience_years', 'educational_qualification', 'min_salary', 'max_salary', 'benefits', 'career_growth'],
   3: ['resume_required', 'employment_proof_required'],
 };
 
@@ -38,8 +38,6 @@ const EMPTY_OPPORTUNITY: Partial<OpportunityWizardData> = {
   work_mode: 'ON_SITE',
   public_title: '',
   about: '',
-  // Previously absent from the defaults: an untouched field stays `undefined`,
-  // which the schema rejects while no error was ever rendered for it.
   responsibilities: '',
   location: '',
   min_experience_years: 0,
@@ -47,6 +45,26 @@ const EMPTY_OPPORTUNITY: Partial<OpportunityWizardData> = {
   resume_required: true,
   employment_proof_required: false,
 };
+
+const WIZARD_FIELDS = new Set<string>(Object.keys(EMPTY_OPPORTUNITY).concat([
+  'hiring_manager_id', 'reporting_manager_id', 'internal_notes',
+  'educational_qualification', 'min_salary', 'max_salary',
+  'benefits', 'career_growth', 'max_experience_years',
+  'application_deadline', 'preferred_languages', 'certifications',
+]));
+
+function toFormDefaults(opp: any): Partial<OpportunityWizardData> {
+  const result: Record<string, any> = { ...EMPTY_OPPORTUNITY };
+  for (const key of Object.keys(opp)) {
+    if (WIZARD_FIELDS.has(key) && opp[key] !== undefined) {
+      result[key] = opp[key];
+    }
+  }
+  if (opp.application_deadline) {
+    result.application_deadline = new Date(opp.application_deadline).toISOString().split('T')[0];
+  }
+  return result as Partial<OpportunityWizardData>;
+}
 
 export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit }: CreateOpportunityDialogProps) {
   const [step, setStep] = useState(1);
@@ -62,7 +80,7 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
   const form = useForm<OpportunityWizardData>({
     resolver: zodResolver(OpportunityWizardSchema) as never,
     defaultValues: (opportunityToEdit
-      ? { ...EMPTY_OPPORTUNITY, ...opportunityToEdit }
+      ? toFormDefaults(opportunityToEdit)
       : EMPTY_OPPORTUNITY) as OpportunityWizardData,
   });
 
@@ -78,13 +96,16 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
     toast.error(`Please check: ${labels}`);
   };
 
+  const [publishOnSave, setPublishOnSave] = React.useState(false);
+
   const onSubmit = (data: OpportunityWizardData) => {
+    const payload = publishOnSave ? { ...data, status: 'PUBLISHED' as const } : data;
     if (opportunityToEdit) {
-      updateMutation.mutate({ id: opportunityToEdit.id, data }, {
+      updateMutation.mutate({ id: opportunityToEdit.id, data: payload }, {
         onSuccess: () => onOpenChange(false)
       });
     } else {
-      createMutation.mutate(data, {
+      createMutation.mutate(payload, {
         onSuccess: () => onOpenChange(false)
       });
     }
@@ -237,6 +258,15 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                 <Err name="hiring_priority" />
               </div>
               
+              <div className="space-y-2">
+                <Label>Hiring Manager</Label>
+                <Input {...form.register('hiring_manager_id')} placeholder="Manager UUID (optional)" />
+              </div>
+              <div className="space-y-2">
+                <Label>Reporting Manager</Label>
+                <Input {...form.register('reporting_manager_id')} placeholder="Manager UUID (optional)" />
+              </div>
+
               <div className="col-span-2 space-y-2">
                 <Label>Internal Notes (Not visible to candidates)</Label>
                 <Textarea {...form.register('internal_notes')} placeholder="Budget, target companies, etc." />
@@ -299,6 +329,30 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
                 <Input type="number" {...form.register('max_experience_years')} />
                 <Err name="max_experience_years" />
               </div>
+
+              <div className="space-y-2">
+                <Label>Educational Qualification</Label>
+                <Input {...form.register('educational_qualification')} placeholder="e.g. Bachelor's in Computer Science" />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Min Salary</Label>
+                <Input type="number" {...form.register('min_salary')} placeholder="e.g. 50000" />
+              </div>
+              <div className="space-y-2">
+                <Label>Max Salary</Label>
+                <Input type="number" {...form.register('max_salary')} placeholder="e.g. 80000" />
+              </div>
+
+              <div className="col-span-2 space-y-2">
+                <Label>Benefits & Perks</Label>
+                <Textarea {...form.register('benefits')} placeholder="Health insurance, flexible hours, etc." className="min-h-[80px]" />
+              </div>
+
+              <div className="col-span-2 space-y-2">
+                <Label>Career Growth</Label>
+                <Textarea {...form.register('career_growth')} placeholder="Growth opportunities, mentorship programs, etc." className="min-h-[80px]" />
+              </div>
             </div>
           )}
 
@@ -331,9 +385,25 @@ export function CreateOpportunityDialog({ open, onOpenChange, opportunityToEdit 
               {step > 1 ? 'Back' : 'Cancel'}
             </Button>
             {isLastStep ? (
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-                Save Opportunity
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  onClick={() => setPublishOnSave(false)}
+                  className="cursor-pointer"
+                >
+                  Save as Draft
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  onClick={() => setPublishOnSave(true)}
+                  className="cursor-pointer"
+                >
+                  Save & Publish
+                </Button>
+              </div>
             ) : (
               <Button type="button" onClick={handleNext}>Next Step</Button>
             )}
