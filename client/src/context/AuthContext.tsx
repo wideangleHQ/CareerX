@@ -35,10 +35,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const initAuth = async () => {
       if (typeof window !== 'undefined') {
         const path = window.location.pathname;
-        const isPublic = path.startsWith('/apply') 
+        const isPublic = path.startsWith('/apply')
           || path.startsWith('/book-interview')
           || path.startsWith('/auth/exchange');
         if (isPublic) {
@@ -50,16 +52,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         setIsLoading(true);
         const me = await authApi.me();
+        if (controller.signal.aborted) return;
         setUser(me);
         setError(null);
       } catch (err: any) {
+        if (controller.signal.aborted) return;
         setUser(null);
       } finally {
-        setIsLoading(false);
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
       }
     };
 
     initAuth();
+
+    return () => {
+      controller.abort();
+    };
   }, []);
 
   const exchange = async (): Promise<User> => {

@@ -47,7 +47,7 @@ export function WorkspaceOfferTab({ application, offer, isLoading }: WorkspaceOf
     switch (status) {
       case 'ACCEPTED': return 'bg-green-100 text-green-700 border-green-200';
       case 'DECLINED': return 'bg-red-100 text-red-700 border-red-200';
-      case 'RELEASED': return 'bg-blue-100 text-blue-700 border-blue-200';
+      case 'RELEASED': return 'bg-teal-100 text-teal-700 border-teal-200';
       case 'GENERATED': return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'CANCELLED': return 'bg-neutral-100 text-neutral-700 border-neutral-200';
       default: return 'bg-neutral-100 text-neutral-700 border-neutral-200';
@@ -66,7 +66,7 @@ export function WorkspaceOfferTab({ application, offer, isLoading }: WorkspaceOf
         
         <div className="flex gap-2">
           {offer.status === 'GENERATED' && (
-            <Button size="sm" variant="default" className="cursor-pointer bg-blue-600 hover:bg-blue-700">Release Offer</Button>
+            <Button size="sm" variant="default" className="cursor-pointer bg-primary hover:bg-primary/90">Release Offer</Button>
           )}
           {offer.status === 'RELEASED' && (
             <>

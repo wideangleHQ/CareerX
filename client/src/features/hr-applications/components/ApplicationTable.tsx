@@ -9,7 +9,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { CandidateProfile } from '@/src/features/hr-candidates/components/CandidateProfile';
 import { candidatesApi } from '@/src/api/candidates';
-import { User, Eye, Mail, Phone, ExternalLink, X } from 'lucide-react';
+import { User, Eye, Mail, Phone, ExternalLink, X, FileText, Download } from 'lucide-react';
+import { useFileAction } from '@/src/features/hr-candidates/hooks/useCandidateFiles';
+import { FilePreviewDialog } from '@/src/features/hr-candidates/components/FilePreviewDialog';
 import type { Application } from '@/src/api/types';
 
 interface ApplicationTableProps {
@@ -21,6 +23,8 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
   const queryClient = useQueryClient();
   const [workspaceCandidateId, setWorkspaceCandidateId] = React.useState<string | null>(null);
   const [workspaceApplicationId, setWorkspaceApplicationId] = React.useState<string | null>(null);
+  const [previewFile, setPreviewFile] = React.useState<import('@/src/api/types').CandidateFile | null>(null);
+  const fileAction = useFileAction();
   const selectedApplication = React.useMemo(
     () => applications.find((app) => app.candidate.id === workspaceCandidateId) ?? null,
     [applications, workspaceCandidateId],
@@ -76,6 +80,7 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
           <TableHead>Interview</TableHead>
           <TableHead>Applied Date</TableHead>
           <TableHead>Updated</TableHead>
+          <TableHead>Resume</TableHead>
           <TableHead>Priority</TableHead>
           <TableHead>Status</TableHead>
           <TableHead className="text-right">Actions</TableHead>
@@ -159,6 +164,31 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
             <TableCell className="text-xs text-neutral-600">
               {new Date(app.updatedAt).toLocaleDateString()}
             </TableCell>
+            <TableCell>
+              {app.resumeFile ? (() => {
+                const cf: import('@/src/api/types').CandidateFile = {
+                  id: app.resumeFile.id,
+                  fileName: app.resumeFile.fileName,
+                  fileType: 'RESUME',
+                  bucket: '',
+                  fileSizeKb: null,
+                  mimeType: app.resumeFile.mimeType,
+                  createdAt: '',
+                };
+                return (
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="xs" className="h-7 px-1.5" onClick={() => setPreviewFile(cf)} title="Preview">
+                      <FileText className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="xs" className="h-7 px-1.5" onClick={() => fileAction.mutate({ file: cf, mode: 'download' })} title="Download">
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                );
+              })() : (
+                <span className="text-xs text-muted-foreground">No Resume</span>
+              )}
+            </TableCell>
             <TableCell className="text-xs font-medium text-neutral-700">
               {app.opportunity?.priority || '-'}
             </TableCell>
@@ -181,19 +211,20 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
       </TableBody>
       </Table>
       <Dialog open={!!workspaceCandidateId} onOpenChange={(open) => { if (!open) { setWorkspaceCandidateId(null); setWorkspaceApplicationId(null); } }}>
-        <DialogContent className="left-0 top-0 h-dvh w-full max-w-none translate-x-0 translate-y-0 rounded-none p-0 sm:left-auto sm:right-0 sm:top-0 sm:h-dvh sm:w-[80vw] sm:max-w-[80vw] sm:translate-x-0 sm:translate-y-0 lg:w-[42vw] lg:max-w-[720px]">
-          <DialogClose className="absolute right-4 top-4 z-10 rounded-md border bg-white p-2 text-neutral-500 shadow-sm hover:text-black">
+        <DialogContent className="left-0 top-0 h-dvh w-full max-w-none translate-x-0 translate-y-0 rounded-none p-0 sm:left-auto sm:right-0 sm:top-0 sm:h-dvh sm:w-full sm:max-w-full sm:translate-x-0 sm:translate-y-0 md:w-[90vw] md:max-w-[90vw] lg:w-[60vw] lg:max-w-[1200px]">
+          <DialogClose className="absolute right-4 top-4 z-20 rounded-full border border-neutral-200 bg-white p-2 text-neutral-400 shadow-sm transition-colors hover:bg-neutral-50 hover:text-neutral-900">
             <X className="h-4 w-4" />
           </DialogClose>
           <DialogHeader className="sr-only">
             <DialogTitle>{selectedApplication?.candidate.fullName ?? 'Candidate workspace'}</DialogTitle>
             <DialogDescription>Candidate application workspace</DialogDescription>
           </DialogHeader>
-          <div className="h-full overflow-y-auto p-4 sm:p-6">
+          <div className="h-full overflow-y-auto">
             {workspaceCandidateId && <CandidateProfile candidateId={workspaceCandidateId} applicationId={workspaceApplicationId ?? undefined} />}
           </div>
         </DialogContent>
       </Dialog>
+      <FilePreviewDialog file={previewFile} onClose={() => setPreviewFile(null)} />
     </>
   );
 }

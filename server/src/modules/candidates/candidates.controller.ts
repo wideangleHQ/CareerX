@@ -39,6 +39,14 @@ export class CandidatesController {
     return this.candidatesService.findAll(parseCandidateQuery(query));
   }
 
+  @Get(':id/activity')
+  @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CAREER_VIEW')
+  async getActivity(@Param('id', new ParseUUIDPipe()) id: string) {
+    const data = await this.candidatesService.getActivity(id);
+    return { success: true, data };
+  }
+
   @Get(':id')
   @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
   @RequirePermissions('CAREER_VIEW')

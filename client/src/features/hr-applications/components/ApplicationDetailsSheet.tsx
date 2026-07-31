@@ -7,8 +7,10 @@ import { useUpdateApplicationStatus } from '../hooks/useUpdateApplicationStatus'
 import { StatusBadge } from './StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Loader2, Mail, Phone, FileText, Clock3 } from 'lucide-react';
-import type { ApplicationStatus } from '@/src/api/types';
+import { Loader2, Mail, Phone, FileText, Clock3, Download, ExternalLink } from 'lucide-react';
+import type { ApplicationStatus, CandidateFile } from '@/src/api/types';
+import { useCandidateFiles, useFileAction } from '@/src/features/hr-candidates/hooks/useCandidateFiles';
+import { FilePreviewDialog } from '@/src/features/hr-candidates/components/FilePreviewDialog';
 
 interface ApplicationDetailsSheetProps {
   applicationId: string;
@@ -40,8 +42,12 @@ export function ApplicationDetailsSheet({ applicationId }: ApplicationDetailsShe
   });
 
   const updateStatusMutation = useUpdateApplicationStatus();
+  const { files, isLoading: isLoadingFiles, isError: isFilesError } = useCandidateFiles(applicationId);
+  const fileAction = useFileAction();
+  const [previewFile, setPreviewFile] = React.useState<CandidateFile | null>(null);
 
   const application = appRes?.data;
+  const resume = files.find((file) => file.fileType === 'RESUME') ?? null;
 
   const handleStatusChange = (status: ApplicationStatus) => {
     if (!application) return;
@@ -264,10 +270,28 @@ export function ApplicationDetailsSheet({ applicationId }: ApplicationDetailsShe
               <CardTitle className="text-base font-bold flex items-center gap-2"><FileText className="h-4 w-4" /> Documents</CardTitle>
             </CardHeader>
             <CardContent className="p-5 space-y-2">
-              {(application.files ?? []).map((file) => <p key={file.id} className="text-sm text-neutral-700 truncate">{file.fileName}</p>)}
-              {(application.files ?? []).length === 0 && <p className="text-sm text-muted-foreground">No documents attached.</p>}
+              {isLoadingFiles && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+              {isFilesError && <p className="text-sm text-destructive">Could not load documents.</p>}
+              {!isLoadingFiles && !isFilesError && files.length === 0 && <p className="text-sm text-muted-foreground">No documents attached.</p>}
+              {!isLoadingFiles && !isFilesError && files.map((file) => (
+                <div key={file.id} className="flex items-center justify-between gap-2 text-sm">
+                  <span className="truncate text-neutral-700">{file.fileName}</span>
+                  <div className="flex shrink-0 gap-1">
+                    {file.mimeType === 'application/pdf' || file.mimeType?.startsWith('image/') ? (
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPreviewFile(file)}>
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : null}
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => fileAction.mutate({ file, mode: 'download' })}>
+                      <Download className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {resume && <p className="text-xs text-muted-foreground">Resume ready for preview/download.</p>}
             </CardContent>
           </Card>
+          <FilePreviewDialog file={previewFile} onClose={() => setPreviewFile(null)} />
           <Card className="border-neutral-200">
             <CardHeader className="border-b p-5"><CardTitle className="text-base font-bold">HR Notes & Feedback</CardTitle></CardHeader>
             <CardContent className="p-5 space-y-2">

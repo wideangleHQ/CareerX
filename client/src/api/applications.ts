@@ -18,10 +18,24 @@ export const applicationsApi = {
     opportunityId?: string | null;
     selfDescription: string;
     experienceYears: number;
-    resumePath: string;
-    previousOrgProofPath?: string | null;
+    resume: File;
+    previousOrgProof?: File | null;
   }): Promise<{ success: boolean; data: Application }> => {
-    const { data } = await axiosClient.post('/api/v1/applications', payload);
+    const formData = new FormData();
+    formData.append('fullName', payload.fullName);
+    formData.append('email', payload.email);
+    formData.append('mobileNumber', payload.mobileNumber);
+    if (payload.whatsappNumber) formData.append('whatsappNumber', payload.whatsappNumber);
+    formData.append('departmentId', payload.departmentId);
+    if (payload.opportunityId) formData.append('opportunityId', payload.opportunityId);
+    formData.append('selfDescription', payload.selfDescription);
+    formData.append('experienceYears', String(payload.experienceYears));
+    formData.append('resume', payload.resume);
+    if (payload.previousOrgProof) {
+      formData.append('previousOrgProof', payload.previousOrgProof);
+    }
+
+    const { data } = await axiosClient.post('/api/v1/applications', formData);
     return data;
   },
 

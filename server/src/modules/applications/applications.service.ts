@@ -21,6 +21,7 @@ import type { CreateApplicationDto } from './dto/create-application.dto';
 import type { QueryApplicationsDto } from './dto/query-applications.dto';
 import type { UpdateStatusDto } from './dto/update-status.dto';
 import { StorageBuckets } from '../../storage/storage.config';
+import { SupabaseStorageService } from '../../storage/supabase-storage.service';
 
 const DUPLICATE_ACTIVE_STATUSES: application_status_enum[] = ['NEW', 'SLOT_BOOKED', 'INTERVIEWED'];
 const STATUS_TRANSITIONS: Record<application_status_enum, application_status_enum[]> = {
@@ -38,6 +39,28 @@ const STATUS_TRANSITIONS: Record<application_status_enum, application_status_enu
 function safeFileName(value: string, fallback: string): string {
   const name = value.split(/[\\/]/).pop()?.trim().replace(/[^a-zA-Z0-9._-]/g, '_');
   return name && name !== '.' && name !== '..' ? name.slice(0, 255) : fallback;
+}
+
+export interface ApplicationUploadFile {
+  originalname: string;
+  buffer: Buffer;
+  mimetype: string;
+  encoding: string;
+  size: number;
+}
+
+export interface ApplicationUploadFiles {
+  resume?: ApplicationUploadFile;
+  previousOrgProof?: ApplicationUploadFile;
+}
+
+interface UploadedCandidateFile {
+  file_type: 'RESUME' | 'ORG_PROOF';
+  bucket: string;
+  storage_path: string;
+  file_name: string;
+  file_size_kb: number;
+  mime_type: string;
 }
 
 const applicationListSelect = {
@@ -60,6 +83,11 @@ const applicationListSelect = {
   },
   slot_assignment: {
     select: { id: true },
+  },
+  files: {
+    select: { id: true, file_name: true, file_type: true, mime_type: true },
+    where: { file_type: 'RESUME' },
+    take: 1,
   },
 } satisfies Prisma.applicationsSelect;
 
@@ -93,9 +121,13 @@ export class ApplicationsService {
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter,
     private readonly departmentSync: DepartmentSyncService,
+    private readonly storage: SupabaseStorageService,
   ) {}
 
-  async create(dto: CreateApplicationDto): Promise<ApplicationDetailDto> {
+  async create(
+    dto: CreateApplicationDto,
+    uploadFiles: ApplicationUploadFiles = {},
+  ): Promise<ApplicationDetailDto> {
     try {
       const isDepartmentValid = await this.departmentSync.validateDepartmentId(dto.departmentId);
       if (!isDepartmentValid) {
@@ -119,8 +151,10 @@ export class ApplicationsService {
           throw new ConflictException('Application deadline has passed');
         }
 
-        if (opportunity.resume_required && !dto.resumePath) {
-          throw new BadRequestException('Resume is mandatory for this opportunity');
+        if (opportunity.resume_required && !uploadFiles.resume) {
+          throw new BadRequestException(
+            'Resume file upload is required; backend received metadata but no file buffer',
+          );
         }
 
         let candidate = await tx.candidates.findFirst({
@@ -159,16 +193,6 @@ export class ApplicationsService {
 
         const applicationCode = await this.generateApplicationCode(tx);
 
-        const fileCreates: { file_type: 'RESUME' | 'ORG_PROOF'; bucket: string; storage_path: string; file_name: string }[] = [];
-        if (dto.resumePath) {
-          const fileName = safeFileName(dto.resumePath, 'resume.pdf');
-          fileCreates.push({ file_type: 'RESUME', bucket: StorageBuckets.CANDIDATE, storage_path: `applications/__APPLICATION_ID__/${fileName}`, file_name: fileName });
-        }
-        if (dto.previousOrgProofPath) {
-          const fileName = safeFileName(dto.previousOrgProofPath, 'org-proof');
-          fileCreates.push({ file_type: 'ORG_PROOF', bucket: StorageBuckets.CANDIDATE, storage_path: `applications/__APPLICATION_ID__/${fileName}`, file_name: fileName });
-        }
-
         const application = await tx.applications.create({
           data: {
             application_code: applicationCode,
@@ -192,12 +216,18 @@ export class ApplicationsService {
           select: applicationDetailSelect,
         });
 
+        const fileCreates = await this.uploadApplicationFiles(application.id, dto, uploadFiles);
+
         if (fileCreates.length > 0) {
           await tx.candidate_files.createMany({
             data: fileCreates.map((file) => ({
-              ...file,
               application_id: application.id,
-              storage_path: file.storage_path.replace('__APPLICATION_ID__', application.id),
+              file_type: file.file_type,
+              bucket: file.bucket,
+              storage_path: file.storage_path,
+              file_name: file.file_name,
+              file_size_kb: file.file_size_kb,
+              mime_type: file.mime_type,
             })),
           });
         }
@@ -210,7 +240,9 @@ export class ApplicationsService {
       }, { maxWait: 10000, timeout: 30000 });
     } catch (error) {
       if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException('Internal Server Error');
+      throw new InternalServerErrorException(
+        `Internal Server Error: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -491,6 +523,7 @@ export class ApplicationsService {
 
     return {
       deleted_at: null,
+      ...(query.candidateId ? { candidate_id: query.candidateId } : {}),
       ...(query.departmentId ? { department_id: query.departmentId } : {}),
       ...(query.hiringOpportunityId ? { hiring_opportunity_id: query.hiringOpportunityId } : {}),
       ...(query.status ? { status: query.status } : {}),
@@ -580,6 +613,13 @@ export class ApplicationsService {
           }
         : null,
       interviewStatus: application.slot_assignment ? 'SCHEDULED' : 'NOT_SCHEDULED',
+      resumeFile: application.files[0]
+        ? {
+            id: application.files[0].id,
+            fileName: application.files[0].file_name,
+            mimeType: application.files[0].mime_type,
+          }
+        : null,
       createdAt: application.created_at,
       updatedAt: application.updated_at,
     };
@@ -630,10 +670,130 @@ export class ApplicationsService {
     };
   }
 
-  private canViewApplication(assignedHrId: string | null, user: any): boolean {
-    const isElevated =
-      user.permissions?.includes('CAREER_ADMIN') || user.permissions?.includes('CAREER_REPORTS');
-    return Boolean(isElevated || assignedHrId === user.sub || assignedHrId === null);
+  private canViewApplication(_assignedHrId: string | null, user: any): boolean {
+    return Boolean(user.permissions?.includes('CAREER_VIEW'));
+  }
+
+  private async uploadApplicationFiles(
+    applicationId: string,
+    dto: CreateApplicationDto,
+    uploadFiles: ApplicationUploadFiles,
+  ): Promise<UploadedCandidateFile[]> {
+    const files: UploadedCandidateFile[] = [];
+
+    if (dto.resumePath && !uploadFiles.resume) {
+      throw new BadRequestException(
+        'Resume file upload is required; backend received metadata but no file buffer',
+      );
+    }
+    if (dto.previousOrgProofPath && !uploadFiles.previousOrgProof) {
+      throw new BadRequestException(
+        'Previous organization proof upload metadata was received without a file buffer',
+      );
+    }
+
+    if (uploadFiles.resume) {
+      files.push(await this.uploadOneApplicationFile(applicationId, 'RESUME', uploadFiles.resume, 'resume.pdf'));
+    }
+
+    if (uploadFiles.previousOrgProof) {
+      files.push(
+        await this.uploadOneApplicationFile(
+          applicationId,
+          'ORG_PROOF',
+          uploadFiles.previousOrgProof,
+          'org-proof',
+        ),
+      );
+    }
+
+    return files;
+  }
+
+  private async uploadOneApplicationFile(
+    applicationId: string,
+    fileType: 'RESUME' | 'ORG_PROOF',
+    file: ApplicationUploadFile,
+    fallbackFileName: string,
+  ): Promise<UploadedCandidateFile> {
+    const fileName = safeFileName(file.originalname, fallbackFileName);
+    const storagePath = `applications/${applicationId}/${fileName}`;
+    const bucket = StorageBuckets.CANDIDATE;
+    const contentType = file.mimetype || 'application/octet-stream';
+
+    await this.storage.uploadObject({
+      bucket,
+      path: storagePath,
+      contentType,
+      body: file.buffer,
+      originalName: file.originalname,
+      encoding: file.encoding,
+      size: file.size,
+    });
+
+    return {
+      file_type: fileType,
+      bucket,
+      storage_path: storagePath,
+      file_name: fileName,
+      file_size_kb: Math.ceil(file.size / 1024),
+      mime_type: contentType,
+    };
+  }
+
+  async getOffer(id: string, user?: any) {
+    const application = await this.prisma.applications.findFirst({
+      where: { id, deleted_at: null },
+      select: { id: true, assigned_hr_id: true, department_id: true, application_code: true },
+    });
+    if (!application) throw new NotFoundException('Application not found');
+
+    if (user) {
+      if (!this.canViewApplication(application.assigned_hr_id, user)) {
+        throw new NotFoundException('Application not found');
+      }
+    }
+
+    const latestOfferNote = await this.prisma.hr_notes.findFirst({
+      where: { application_id: id, note: { startsWith: '{"type":"OFFER_DOCUMENT"' } },
+      orderBy: { created_at: 'desc' },
+      include: { hr: { select: { id: true, full_name: true, email: true, department_id: true, performx_role: true, is_active: true } } },
+    });
+
+    if (!latestOfferNote) return null;
+
+    try {
+      const offerData = JSON.parse(latestOfferNote.note);
+      return {
+        id: latestOfferNote.id,
+        application_id: id,
+        status: offerData.status ?? 'DRAFT',
+        salary: offerData.salary ?? 0,
+        currency: offerData.currency ?? 'INR',
+        joining_date: offerData.joiningDate ?? offerData.joining_date ?? null,
+        expiry_date: offerData.expiryDate ?? offerData.expiry_date ?? null,
+        offer_reference: offerData.offerReference ?? `OFFER-${application.application_code}`,
+        generated_by_id: latestOfferNote.hr_id,
+        employment_type: offerData.employmentType ?? offerData.employment_type ?? null,
+        location: offerData.location ?? null,
+        reporting_manager: offerData.reportingManager ?? offerData.reporting_manager ?? null,
+        remarks: offerData.remarks ?? null,
+        created_at: latestOfferNote.created_at,
+        updated_at: latestOfferNote.created_at,
+        generated_by: latestOfferNote.hr
+          ? {
+              id: latestOfferNote.hr.id,
+              full_name: latestOfferNote.hr.full_name,
+              email: latestOfferNote.hr.email,
+              department_id: latestOfferNote.hr.department_id,
+              performx_role: latestOfferNote.hr.performx_role,
+              is_active: latestOfferNote.hr.is_active,
+            }
+          : null,
+      };
+    } catch {
+      return null;
+    }
   }
 
   async generateOffer(id: string, payload: any, user: any) {

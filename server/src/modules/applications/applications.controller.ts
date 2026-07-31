@@ -8,14 +8,18 @@ import {
   Patch,
   Post,
   Query,
+  UploadedFiles,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CareerJwtAuthGuard } from '../../common/guards/career-jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import type { CareerJwtPayload } from '../auth/interfaces/auth.interfaces';
 import { ApplicationsService } from './applications.service';
+import type { ApplicationUploadFile } from './applications.service';
 import type {
   ApplicationListResponseDto,
   ApplicationMutationResponseDto,
@@ -30,8 +34,22 @@ export class ApplicationsController {
   constructor(private readonly applicationsService: ApplicationsService) {}
 
   @Post()
-  async create(@Body() body: unknown): Promise<ApplicationMutationResponseDto> {
-    const data = await this.applicationsService.create(parseCreateApplicationDto(body));
+  @UseInterceptors(FileFieldsInterceptor([
+    { name: 'resume', maxCount: 1 },
+    { name: 'previousOrgProof', maxCount: 1 },
+  ]))
+  async create(
+    @Body() body: unknown,
+    @UploadedFiles() files?: {
+      resume?: ApplicationUploadFile[];
+      previousOrgProof?: ApplicationUploadFile[];
+    },
+  ): Promise<ApplicationMutationResponseDto> {
+    const uploadFiles = {
+      ...(files?.resume?.[0] ? { resume: files.resume[0] } : {}),
+      ...(files?.previousOrgProof?.[0] ? { previousOrgProof: files.previousOrgProof[0] } : {}),
+    };
+    const data = await this.applicationsService.create(parseCreateApplicationDto(body), uploadFiles);
     return { success: true, message: 'Application created', data };
   }
 
@@ -136,6 +154,17 @@ export class ApplicationsController {
   ): Promise<ApplicationMutationResponseDto> {
     const data = await this.applicationsService.remove(id);
     return { success: true, message: 'Application deleted', data };
+  }
+
+  @Get(':id/offer')
+  @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CAREER_VIEW')
+  async getOffer(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @CurrentUser() user: CareerJwtPayload
+  ) {
+    const data = await this.applicationsService.getOffer(id, user);
+    return { success: true, data };
   }
 
   @Post(':id/offer')

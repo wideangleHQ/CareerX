@@ -12,7 +12,7 @@ export default function HRError({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
+    console.error('[HRError] Caught error:', error);
   }, [error]);
 
   return (
@@ -24,6 +24,11 @@ export default function HRError({
       <p className="text-sm text-neutral-500 mt-2">
         An error occurred in this workspace module.
       </p>
+      <pre className="mt-3 max-w-full overflow-x-auto rounded bg-red-50 p-3 text-left text-xs text-red-800 border border-red-200">
+        {error.message}
+        {'\n\n'}
+        {error.stack}
+      </pre>
       <div className="flex gap-3 mt-6">
         <Button variant="outline" onClick={reset} className="cursor-pointer">
           Try Again

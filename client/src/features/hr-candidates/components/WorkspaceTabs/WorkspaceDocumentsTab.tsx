@@ -47,7 +47,7 @@ export function WorkspaceDocumentsTab({ application }: WorkspaceDocumentsTabProp
         className="flex items-center justify-between gap-3 p-4 border rounded-lg hover:bg-neutral-50 transition-colors"
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="rounded-lg bg-blue-50 p-2 text-blue-500 shrink-0">
+          <div className="rounded-lg bg-emerald-50 p-2 text-primary shrink-0">
             <FileText className="h-5 w-5" />
           </div>
           <div className="min-w-0">

@@ -46,13 +46,11 @@ export class FilesRepository {
     });
   }
 
-  findApplicationForCareerUser(applicationId: string, user: CareerJwtPayload) {
-    const elevated = user.permissions.includes('CAREER_ADMIN') || user.permissions.includes('CAREER_REPORTS');
+  findApplicationForCareerUser(applicationId: string, _user: CareerJwtPayload) {
     return this.prisma.applications.findFirst({
       where: {
         id: applicationId,
         deleted_at: null,
-        ...(elevated ? {} : { OR: [{ assigned_hr_id: user.sub }, { assigned_hr_id: null }] }),
       },
       select: { id: true },
     });

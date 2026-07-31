@@ -69,8 +69,6 @@ export class FilesService {
     };
   }
 
-  // storage_path is read here but never returned — it stays server-side and is
-  // exchanged for a time-limited signed URL.
   async createDownloadUrl(fileId: string, user: CareerJwtPayload): Promise<SignedUrlResponseDto> {
     const file = await this.repository.findInternalById(fileId);
     if (!file) throw new NotFoundException('File not found');
@@ -92,9 +90,8 @@ export class FilesService {
     };
   }
 
-  private canViewApplication(assignedHrId: string | null, _departmentId: string, user: CareerJwtPayload): boolean {
-    const elevated = user.permissions.includes('CAREER_ADMIN') || user.permissions.includes('CAREER_REPORTS');
-    return elevated || assignedHrId === null || assignedHrId === user.sub;
+  private canViewApplication(_assignedHrId: string | null, _departmentId: string, user: CareerJwtPayload): boolean {
+    return user.permissions.includes('CAREER_VIEW');
   }
 
   private toDto(row: FileRecord): CandidateFileDto {

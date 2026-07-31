@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { candidatesApi } from '@/src/api/candidates';
+import { applicationsApi } from '@/src/api/applications';
 import { timelineApi } from '@/src/api/timeline';
 import { offersApi } from '@/src/api/offers';
 
 export function useCandidateWorkspace(candidateId: string, applicationId?: string) {
-  // 1. Fetch Candidate Profile (includes applications)
   const { data: candidateRes, isLoading: isLoadingCandidate } = useQuery({
     queryKey: ['candidate-profile', candidateId],
     queryFn: () => candidatesApi.findOne(candidateId),
@@ -12,27 +12,35 @@ export function useCandidateWorkspace(candidateId: string, applicationId?: strin
   });
 
   const candidate = candidateRes?.data;
-  const applications = (candidate as any)?.applications || [];
-  
-  // Default to the first application, or null if none
-  const activeApplication = (applicationId ? applications.find((item: { id: string }) => item.id === applicationId) : null) || applications[0] || null;
+
+  const { data: applicationRes, isLoading: isLoadingApplication } = useQuery({
+    queryKey: ['application-details', applicationId],
+    queryFn: () => applicationsApi.findOne(applicationId!),
+    enabled: !!applicationId,
+  });
+
+  const { data: candidateAppsRes } = useQuery({
+    queryKey: ['candidate-applications', candidateId],
+    queryFn: () => applicationsApi.findAll({ candidateId, limit: 20, sortBy: 'createdAt', sortOrder: 'desc' }),
+    enabled: !!candidateId && !applicationId,
+  });
+
+  const candidateApplications = candidateAppsRes?.data ?? [];
+  const activeApplication = applicationRes?.data ?? candidateApplications[0] ?? null;
   const activeApplicationId = activeApplication?.id;
 
-  // 2. Fetch Timeline for active application
   const { data: timelineRes, isLoading: isLoadingTimeline } = useQuery({
     queryKey: ['candidate-timeline', activeApplicationId],
     queryFn: () => timelineApi.getTimelineByApplication(activeApplicationId!),
     enabled: !!activeApplicationId,
   });
 
-  // 3. Fetch Activity for candidate
   const { data: activityRes, isLoading: isLoadingActivity } = useQuery({
     queryKey: ['candidate-activity', candidateId],
     queryFn: () => timelineApi.getActivityByCandidate(candidateId),
     enabled: !!candidateId,
   });
 
-  // 4. Fetch Offer for active application
   const { data: offerRes, isLoading: isLoadingOffer } = useQuery({
     queryKey: ['candidate-offer', activeApplicationId],
     queryFn: () => offersApi.getOfferByApplication(activeApplicationId!),
@@ -42,13 +50,13 @@ export function useCandidateWorkspace(candidateId: string, applicationId?: strin
   return {
     candidate,
     activeApplication,
-    applications,
-    
+    applications: candidateApplications,
+
     timeline: timelineRes?.data || [],
     activity: activityRes?.data || [],
     offer: offerRes?.data || null,
-    
-    isLoading: isLoadingCandidate, // primary loading state
+
+    isLoading: isLoadingCandidate || isLoadingApplication,
     isLoadingTimeline,
     isLoadingActivity,
     isLoadingOffer,

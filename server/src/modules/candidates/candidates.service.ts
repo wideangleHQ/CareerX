@@ -122,6 +122,132 @@ export class CandidatesService {
     return this.toCandidateResponse(candidate);
   }
 
+  async getActivity(candidateId: string) {
+    await this.findActiveCandidate(candidateId);
+
+    const applications = await this.prisma.applications.findMany({
+      where: { candidate_id: candidateId, deleted_at: null },
+      select: { id: true },
+    });
+    const applicationIds = applications.map((a) => a.id);
+    if (applicationIds.length === 0) return [];
+
+    const [statusHistory, notes, files, feedback] = await Promise.all([
+      this.prisma.status_history.findMany({
+        where: { application_id: { in: applicationIds } },
+        select: {
+          id: true,
+          application_id: true,
+          from_status: true,
+          to_status: true,
+          reason: true,
+          created_at: true,
+          changed_by: { select: { id: true, full_name: true } },
+        },
+        orderBy: { created_at: 'desc' },
+        take: 50,
+      }),
+      this.prisma.hr_notes.findMany({
+        where: { application_id: { in: applicationIds } },
+        select: {
+          id: true,
+          application_id: true,
+          created_at: true,
+          hr: { select: { id: true, full_name: true } },
+        },
+        orderBy: { created_at: 'desc' },
+        take: 50,
+      }),
+      this.prisma.candidate_files.findMany({
+        where: { application_id: { in: applicationIds } },
+        select: {
+          id: true,
+          application_id: true,
+          file_type: true,
+          file_name: true,
+          created_at: true,
+        },
+        orderBy: { created_at: 'desc' },
+        take: 50,
+      }),
+      this.prisma.interview_feedback.findMany({
+        where: { application_id: { in: applicationIds } },
+        select: {
+          id: true,
+          application_id: true,
+          rating: true,
+          created_at: true,
+          hr: { select: { id: true, full_name: true } },
+        },
+        orderBy: { created_at: 'desc' },
+        take: 50,
+      }),
+    ]);
+
+    const events: Array<{
+      id: string;
+      application_id: string;
+      event_type: string;
+      description: string;
+      created_at: Date;
+      hr_id: string | null;
+      hr: { id: string; full_name: string } | null;
+    }> = [];
+
+    for (const sh of statusHistory) {
+      events.push({
+        id: sh.id,
+        application_id: sh.application_id,
+        event_type: 'UPDATE',
+        description: sh.from_status
+          ? `Status changed from ${sh.from_status} to ${sh.to_status}${sh.reason ? `: ${sh.reason}` : ''}`
+          : `Application submitted (${sh.to_status})`,
+        created_at: sh.created_at,
+        hr_id: sh.changed_by?.id ?? null,
+        hr: sh.changed_by,
+      });
+    }
+
+    for (const note of notes) {
+      events.push({
+        id: note.id,
+        application_id: note.application_id,
+        event_type: 'NOTE_ADDED',
+        description: 'HR note added',
+        created_at: note.created_at,
+        hr_id: note.hr?.id ?? null,
+        hr: note.hr,
+      });
+    }
+
+    for (const file of files) {
+      events.push({
+        id: file.id,
+        application_id: file.application_id,
+        event_type: 'DOWNLOAD',
+        description: `${file.file_type} uploaded: ${file.file_name}`,
+        created_at: file.created_at,
+        hr_id: null,
+        hr: null,
+      });
+    }
+
+    for (const fb of feedback) {
+      events.push({
+        id: fb.id,
+        application_id: fb.application_id,
+        event_type: 'UPDATE',
+        description: `Interview feedback submitted (Rating: ${fb.rating}/5)`,
+        created_at: fb.created_at,
+        hr_id: fb.hr?.id ?? null,
+        hr: fb.hr,
+      });
+    }
+
+    events.sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+    return events.slice(0, 50);
+  }
+
   async update(id: string, dto: UpdateCandidateDto): Promise<CandidateResponseDto> {
     try {
       await this.findActiveCandidate(id);

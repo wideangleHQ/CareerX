@@ -9,6 +9,7 @@ export interface QueryApplicationsDto {
   cursor?: string;
   limit: number;
   search?: string;
+  candidateId?: string;
   departmentId?: string;
   hiringOpportunityId?: string;
   status?: application_status_enum;
@@ -37,6 +38,7 @@ export function parseQueryApplicationsDto(query: Record<string, unknown>): Query
     'cursor',
     'limit',
     'search',
+    'candidateId',
     'departmentId',
     'hiringOpportunityId',
     'status',
@@ -60,6 +62,7 @@ export function parseQueryApplicationsDto(query: Record<string, unknown>): Query
 
   const cursor = query.cursor ? parseUuid(query.cursor) : undefined;
   const search = parseOptionalString(query.search, 100);
+  const candidateId = query.candidateId ? parseUuid(query.candidateId) : undefined;
   const departmentId = query.departmentId ? parseUuid(query.departmentId) : undefined;
   const hiringOpportunityId = query.hiringOpportunityId ? parseUuid(query.hiringOpportunityId) : undefined;
   const assignedHrId = query.assignedHrId ? parseUuid(query.assignedHrId) : undefined;
@@ -86,6 +89,7 @@ export function parseQueryApplicationsDto(query: Record<string, unknown>): Query
     ...(cursor ? { cursor } : {}),
     limit: parseLimit(query.limit),
     ...(search ? { search } : {}),
+    ...(candidateId ? { candidateId } : {}),
     ...(departmentId ? { departmentId } : {}),
     ...(hiringOpportunityId ? { hiringOpportunityId } : {}),
     ...(status ? { status } : {}),

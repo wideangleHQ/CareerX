@@ -7,6 +7,7 @@ const axiosClient: AxiosInstance = axios.create({
   baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
   withCredentials: true,
+  timeout: 15000,
 });
 
 let isRefreshing = false;
@@ -42,11 +43,11 @@ axiosClient.interceptors.response.use(
     const originalRequest = error.config;
     if (!originalRequest) return Promise.reject(error);
 
-    if (error.response?.status === 401 && !(originalRequest as any)._retry) {
-      if (
-        originalRequest.url?.includes('/auth/refresh') ||
-        originalRequest.url?.includes('/auth/exchange')
-      ) {
+    const status = error.response?.status;
+    const url = originalRequest.url ?? '';
+
+    if (status === 401 && !(originalRequest as any)._retry) {
+      if (url.includes('/auth/refresh') || url.includes('/auth/exchange')) {
         return Promise.reject(error);
       }
 

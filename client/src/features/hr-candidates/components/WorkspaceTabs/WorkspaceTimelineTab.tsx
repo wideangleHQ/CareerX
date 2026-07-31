@@ -24,10 +24,10 @@ export function WorkspaceTimelineTab({ events, isLoading }: WorkspaceTimelineTab
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'APPLICATION_SUBMITTED': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      case 'DOCUMENT_UPLOADED': return <FileText className="h-4 w-4 text-blue-500" />;
+      case 'DOCUMENT_UPLOADED': return <FileText className="h-4 w-4 text-teal-600" />;
       case 'INTERVIEW_SCHEDULED': return <CalendarClock className="h-4 w-4 text-purple-500" />;
       case 'FEEDBACK_ADDED': return <MessageSquare className="h-4 w-4 text-amber-500" />;
-      case 'STATUS_CHANGED': return <AlertCircle className="h-4 w-4 text-indigo-500" />;
+      case 'STATUS_CHANGED': return <AlertCircle className="h-4 w-4 text-emerald-600" />;
       default: return <CheckCircle2 className="h-4 w-4 text-neutral-400" />;
     }
   };

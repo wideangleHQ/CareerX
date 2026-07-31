@@ -24,7 +24,7 @@ import { cn } from '@/src/lib/utils';
 
 export default function HRLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { user, isLoading, logout } = useAuth();
+  const { user, isLoading, logout, error } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   if (pathname === '/auth/exchange') {
@@ -35,6 +35,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white">
         <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="ml-3 text-sm text-neutral-400">Authenticating...</p>
       </div>
     );
   }
@@ -46,6 +47,9 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
         <p className="text-sm text-muted-foreground mt-2">
           You must be logged into PerformX to access the recruitment workspace.
         </p>
+        {error && (
+          <p className="text-xs text-red-500 mt-1">Auth error: {error}</p>
+        )}
         <Button
           onClick={() => (window.location.href = 'http://localhost:3000/auth/login')}
           className="mt-4 cursor-pointer font-semibold"

@@ -12,6 +12,16 @@ interface UploadObjectParams {
   path: string;
   contentType: string;
   body: Buffer;
+  originalName?: string;
+  encoding?: string;
+  size?: number;
+}
+
+interface UploadObjectResult {
+  bucket: StorageBucket;
+  path: string;
+  response: unknown;
+  verified: boolean;
 }
 
 interface SignedUrlParams {
@@ -39,7 +49,11 @@ export class SupabaseStorageService {
     this.serviceRoleKey = key;
   }
 
-  async uploadObject(params: UploadObjectParams): Promise<void> {
+  async uploadObject(params: UploadObjectParams): Promise<UploadObjectResult> {
+    if (params.body.length === 0) {
+      throw new InternalServerErrorException('Storage upload aborted: file buffer is empty');
+    }
+
     if (params.body.length > StorageConfig.maxUploadSizeBytes) {
       const limitMb = Math.round(StorageConfig.maxUploadSizeBytes / (1024 * 1024));
       throw new PayloadTooLargeException(`File exceeds the ${limitMb} MB upload limit`);
@@ -57,9 +71,23 @@ export class SupabaseStorageService {
       },
     );
 
+    const responseBody = await readResponseBody(response);
+
     if (!response.ok) {
-      throw new InternalServerErrorException('Failed to upload file to storage');
+      throw new InternalServerErrorException(
+        `Supabase storage upload failed: ${responseBody.raw || response.statusText}`,
+      );
     }
+
+    const verified = await this.objectExists(params.bucket, params.path);
+
+    if (!verified) {
+      throw new InternalServerErrorException(
+        `Supabase upload reported success but object was not found at ${params.bucket}/${params.path}`,
+      );
+    }
+
+    return { bucket: params.bucket, path: params.path, response: responseBody.data, verified };
   }
 
   async createSignedUrl(params: SignedUrlParams): Promise<string>;
@@ -86,17 +114,21 @@ export class SupabaseStorageService {
       },
     );
 
+    const responseBody = await readResponseBody(response);
+
     if (!response.ok) {
-      throw new InternalServerErrorException('Failed to generate signed URL');
+      throw new InternalServerErrorException(
+        `Supabase signed URL failed: ${responseBody.raw || response.statusText}`,
+      );
     }
 
-    const payload = (await response.json()) as { signedURL?: string; signedUrl?: string };
+    const payload = responseBody.data as { signedURL?: string; signedUrl?: string };
     const signedPath = payload.signedURL ?? payload.signedUrl;
     if (!signedPath) {
       throw new InternalServerErrorException('Storage returned an empty signed URL');
     }
     if (signedPath.startsWith('http://') || signedPath.startsWith('https://')) return signedPath;
-    return `${this.supabaseUrl}${signedPath}`;
+    return `${this.storageUrl()}${signedPath}`;
   }
 
   async deleteObject(params: DeleteObjectParams): Promise<void>;
@@ -117,9 +149,40 @@ export class SupabaseStorageService {
       },
     );
 
+    const responseBody = await readResponseBody(response);
     if (!response.ok) {
-      throw new InternalServerErrorException('Failed to delete file from storage');
+      throw new InternalServerErrorException(
+        `Supabase delete failed: ${responseBody.raw || response.statusText}`,
+      );
     }
+  }
+
+  async objectExists(bucket: StorageBucket, path: string): Promise<boolean> {
+    const prefix = dirname(path);
+    const fileName = basename(path);
+    const response = await this.fetch(
+      `${this.storageUrl()}/object/list/${bucket}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prefix,
+          limit: 100,
+          offset: 0,
+          sortBy: { column: 'name', order: 'asc' },
+        }),
+      },
+    );
+
+    const responseBody = await readResponseBody(response);
+    if (!response.ok) {
+      throw new InternalServerErrorException(
+        `Supabase list failed: ${responseBody.raw || response.statusText}`,
+      );
+    }
+
+    const objects = Array.isArray(responseBody.data) ? responseBody.data : [];
+    return objects.some((object: { name?: string }) => object.name === fileName);
   }
 
   private async fetch(url: string, init: RequestInit): Promise<Response> {
@@ -130,8 +193,10 @@ export class SupabaseStorageService {
 
     try {
       return await globalThis.fetch(url, { ...init, headers });
-    } catch {
-      throw new ServiceUnavailableException('Storage service is unavailable');
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `Storage service is unavailable: ${error instanceof Error ? error.message : stringifyForLog(error)}`,
+      );
     }
   }
 
@@ -160,4 +225,41 @@ function encodePath(path: string): string {
     .split('/')
     .map((segment) => encodeURIComponent(segment))
     .join('/');
+}
+
+function dirname(path: string): string {
+  const index = path.lastIndexOf('/');
+  return index === -1 ? '' : path.slice(0, index);
+}
+
+function basename(path: string): string {
+  const index = path.lastIndexOf('/');
+  return index === -1 ? path : path.slice(index + 1);
+}
+
+async function readResponseBody(response: Response): Promise<{ raw: string; data: unknown; error: unknown }> {
+  const raw = await response.text();
+  if (!raw) return { raw, data: null, error: null };
+
+  try {
+    const data = JSON.parse(raw) as unknown;
+    const error =
+      data && typeof data === 'object' && 'error' in data
+        ? (data as { error?: unknown }).error
+        : !response.ok
+          ? data
+          : null;
+    return { raw, data, error };
+  } catch {
+    return { raw, data: raw, error: response.ok ? null : raw };
+  }
+}
+
+function stringifyForLog(value: unknown): string {
+  if (typeof value === 'string') return value;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
 }

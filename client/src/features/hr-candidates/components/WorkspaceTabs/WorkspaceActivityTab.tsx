@@ -24,7 +24,7 @@ export function WorkspaceActivityTab({ activity, isLoading }: WorkspaceActivityT
   const getActivityIcon = (type: string) => {
     switch (type) {
       case 'VIEW': return <Eye className="h-3.5 w-3.5 text-neutral-500" />;
-      case 'DOWNLOAD': return <Download className="h-3.5 w-3.5 text-blue-500" />;
+      case 'DOWNLOAD': return <Download className="h-3.5 w-3.5 text-teal-600" />;
       case 'UPDATE': return <Edit className="h-3.5 w-3.5 text-amber-500" />;
       case 'EMAIL_SENT': return <Mail className="h-3.5 w-3.5 text-purple-500" />;
       case 'NOTE_ADDED': return <MessageSquare className="h-3.5 w-3.5 text-green-500" />;

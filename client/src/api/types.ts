@@ -165,6 +165,7 @@ export interface Application {
     priority: string;
   } | null;
   interviewStatus: 'NOT_SCHEDULED' | 'SCHEDULED' | 'FEEDBACK_SUBMITTED';
+  resumeFile: { id: string; fileName: string; mimeType: string | null } | null;
   createdAt: string;
   updatedAt: string;
   // Detail-only fields (present on findOne / mutation responses).
@@ -197,6 +198,7 @@ export interface QueryApplicationsParams {
   cursor?: string;
   limit?: number;
   search?: string;
+  candidateId?: string;
   departmentId?: string;
   hiringOpportunityId?: string;
   status?: ApplicationStatus;

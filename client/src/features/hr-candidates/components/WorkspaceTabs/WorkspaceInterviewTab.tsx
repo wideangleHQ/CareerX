@@ -84,7 +84,7 @@ export function WorkspaceInterviewTab({ application }: WorkspaceInterviewTabProp
               <Button size="sm" variant="outline" className="cursor-pointer text-xs">
                 Reschedule
               </Button>
-              <Button size="sm" variant="default" className="cursor-pointer text-xs bg-indigo-600 hover:bg-indigo-700">
+              <Button size="sm" variant="default" className="cursor-pointer text-xs bg-primary hover:bg-primary/90">
                 Join Meeting
               </Button>
             </div>

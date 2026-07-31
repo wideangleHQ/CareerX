@@ -15,8 +15,8 @@ export function useSubmitApplication() {
         opportunityId: data.opportunityId,
         selfDescription: data.selfDescription,
         experienceYears: data.experienceYears,
-        resumePath: data.resume?.name || 'resume.pdf',
-        previousOrgProofPath: data.previousOrgProof?.name || null,
+        resume: data.resume,
+        previousOrgProof: data.previousOrgProof ?? null,
       });
 
       if (!applicationRes.success || !applicationRes.data.id) {
