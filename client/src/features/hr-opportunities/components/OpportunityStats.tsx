@@ -42,8 +42,8 @@ export function OpportunityStats() {
     {
       title: 'Total Applications',
       value: stats?.totalApplications || 0,
-      icon: <Briefcase className="h-5 w-5 text-blue-500" />,
-      bg: 'bg-blue-50',
+      icon: <Briefcase className="h-5 w-5 text-primary" />,
+      bg: 'bg-emerald-50',
     }
   ];
 

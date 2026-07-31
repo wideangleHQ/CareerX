@@ -69,6 +69,44 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
 
   return (
     <>
+      {/* Mobile card view */}
+      <div className="block md:hidden divide-y divide-neutral-100">
+        {applications.map((app) => (
+          <div key={app.id} className="p-4 hover:bg-neutral-50/50 transition-colors">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openWorkspace(app)}
+                    className="text-sm font-semibold text-black hover:underline truncate"
+                  >
+                    {app.candidate.fullName}
+                  </button>
+                  <StatusBadge status={app.status} />
+                </div>
+                <p className="text-xs text-neutral-500 mt-0.5 truncate">{app.opportunity?.title || 'No position'}</p>
+                <p className="text-xs text-neutral-400 mt-0.5">{app.department.name} &middot; {app.applicationCode}</p>
+                <div className="flex items-center gap-3 mt-2 text-[11px] text-neutral-500">
+                  <span>Applied {new Date(app.createdAt).toLocaleDateString()}</span>
+                  {app.assignedHr && <span>&middot; {app.assignedHr.fullName}</span>}
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="xs"
+                onClick={() => openWorkspace(app)}
+                className="cursor-pointer shrink-0"
+              >
+                <Eye className="mr-1 h-3.5 w-3.5" /> View
+              </Button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table view */}
+      <div className="hidden md:block overflow-auto">
       <Table>
       <TableHeader>
         <TableRow>
@@ -210,6 +248,7 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
         ))}
       </TableBody>
       </Table>
+      </div>
       <Dialog open={!!workspaceCandidateId} onOpenChange={(open) => { if (!open) { setWorkspaceCandidateId(null); setWorkspaceApplicationId(null); } }}>
         <DialogContent className="left-0 top-0 h-dvh w-full max-w-none translate-x-0 translate-y-0 rounded-none p-0 sm:left-auto sm:right-0 sm:top-0 sm:h-dvh sm:w-full sm:max-w-full sm:translate-x-0 sm:translate-y-0 md:w-[90vw] md:max-w-[90vw] lg:w-[60vw] lg:max-w-[1200px]">
           <DialogClose className="absolute right-4 top-4 z-20 rounded-full border border-neutral-200 bg-white p-2 text-neutral-400 shadow-sm transition-colors hover:bg-neutral-50 hover:text-neutral-900">

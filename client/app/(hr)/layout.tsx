@@ -74,11 +74,21 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen bg-neutral-50/50">
+      {/* Mobile overlay backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-40 flex flex-col bg-white border-r transition-all duration-200",
-          sidebarOpen ? "w-64" : "w-16"
+          sidebarOpen ? "w-64" : "w-16",
+          "max-md:w-64",
+          !sidebarOpen && "max-md:-translate-x-full"
         )}
       >
         {/* Workspace Brand */}
@@ -144,7 +154,8 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
       <div
         className={cn(
           "flex-1 flex flex-col min-h-screen transition-all duration-200",
-          sidebarOpen ? "pl-64" : "pl-16"
+          sidebarOpen ? "md:pl-64" : "md:pl-16",
+          "pl-0"
         )}
       >
         {/* Header Bar */}
@@ -152,7 +163,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-neutral-500 hover:text-black block md:hidden cursor-pointer"
+              className="text-neutral-500 hover:text-black cursor-pointer md:hidden"
             >
               <Menu className="h-5 w-5" />
             </button>

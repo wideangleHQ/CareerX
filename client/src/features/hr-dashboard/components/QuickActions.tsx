@@ -14,7 +14,7 @@ import {
 
 const actions = [
   { label: 'Create Opportunity', href: '/opportunities', icon: Briefcase, color: 'text-primary bg-green-50' },
-  { label: 'View Candidates', href: '/candidates', icon: Users, color: 'text-blue-600 bg-blue-50' },
+  { label: 'View Candidates', href: '/candidates', icon: Users, color: 'text-teal-600 bg-teal-50' },
   { label: 'Generate Slots', href: '/interviews/slots', icon: Calendar, color: 'text-amber-600 bg-amber-50' },
   { label: 'Reports', href: '/reports', icon: BarChart3, color: 'text-purple-600 bg-purple-50' },
   { label: 'Offers', href: '/offers', icon: FileSignature, color: 'text-emerald-600 bg-emerald-50' },
@@ -34,7 +34,7 @@ export function QuickActions() {
             <Link
               key={action.href}
               href={action.href}
-              className="flex flex-col items-center gap-2 rounded-xl border border-neutral-100 p-4 hover:bg-neutral-50 transition-colors cursor-pointer group"
+              className="flex flex-col items-center gap-2 rounded-xl border border-neutral-100 p-4 hover:bg-neutral-50 hover:border-neutral-200 transition-all cursor-pointer group"
             >
               <div className={`p-2.5 rounded-lg ${action.color} transition-transform group-hover:scale-105`}>
                 <action.icon className="h-5 w-5" />

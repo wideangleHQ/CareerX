@@ -98,38 +98,66 @@ export default function CandidatesPage() {
           </div>
         ) : (
           <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Candidate Name</TableHead>
-                  <TableHead>Email Address</TableHead>
-                  <TableHead>Mobile Number</TableHead>
-                  <TableHead>Registered Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {candidates.map((cand) => (
-                  <TableRow key={cand.id}>
-                    <TableCell className="font-semibold text-black">
-                      {cand.fullName}
-                    </TableCell>
-                    <TableCell className="text-neutral-600">{cand.email}</TableCell>
-                    <TableCell className="text-neutral-600">{cand.mobileNumber}</TableCell>
-                    <TableCell className="text-xs text-neutral-500">
-                      {new Date(cand.createdAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Link href={`/candidates/${cand.id}`}>
-                        <Button variant="outline" size="xs" className="cursor-pointer">
-                          <Eye className="mr-1 h-3.5 w-3.5" /> Profile
-                        </Button>
-                      </Link>
-                    </TableCell>
+            {/* Mobile card view */}
+            <div className="block md:hidden divide-y divide-neutral-100">
+              {candidates.map((cand) => (
+                <div key={cand.id} className="p-4 hover:bg-neutral-50/50 transition-colors">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-black truncate">{cand.fullName}</p>
+                      <p className="text-xs text-neutral-500 truncate mt-0.5">{cand.email}</p>
+                      {cand.mobileNumber && (
+                        <p className="text-xs text-neutral-500 mt-0.5">{cand.mobileNumber}</p>
+                      )}
+                      <p className="text-[11px] text-neutral-400 mt-1">
+                        Registered {new Date(cand.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Link href={`/candidates/${cand.id}`}>
+                      <Button variant="outline" size="xs" className="cursor-pointer shrink-0">
+                        <Eye className="mr-1 h-3.5 w-3.5" /> View
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-neutral-50/50 hover:bg-neutral-50/50">
+                    <TableHead className="font-semibold text-neutral-600">Candidate Name</TableHead>
+                    <TableHead className="font-semibold text-neutral-600">Email Address</TableHead>
+                    <TableHead className="font-semibold text-neutral-600">Mobile Number</TableHead>
+                    <TableHead className="font-semibold text-neutral-600">Registered Date</TableHead>
+                    <TableHead className="font-semibold text-neutral-600 text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {candidates.map((cand) => (
+                    <TableRow key={cand.id} className="group">
+                      <TableCell className="font-semibold text-black">
+                        {cand.fullName}
+                      </TableCell>
+                      <TableCell className="text-neutral-600">{cand.email}</TableCell>
+                      <TableCell className="text-neutral-600">{cand.mobileNumber}</TableCell>
+                      <TableCell className="text-xs text-neutral-500">
+                        {new Date(cand.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link href={`/candidates/${cand.id}`}>
+                          <Button variant="outline" size="xs" className="cursor-pointer">
+                            <Eye className="mr-1 h-3.5 w-3.5" /> Profile
+                          </Button>
+                        </Link>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
 
             <div className="flex items-center justify-between border-t px-6 py-4 bg-neutral-50/50">
               <span className="text-xs font-semibold text-neutral-500">Page {currentPage}</span>

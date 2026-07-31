@@ -76,7 +76,7 @@ export function OfferDetailView({ offer }: OfferDetailViewProps) {
                 size="sm"
                 onClick={() => handleStatusChange('RELEASED')}
                 disabled={updateStatus.isPending}
-                className="cursor-pointer bg-blue-600 hover:bg-blue-700"
+                className="cursor-pointer bg-primary hover:bg-primary/90"
               >
                 <Send className="w-3.5 h-3.5 mr-1" /> Release
               </Button>

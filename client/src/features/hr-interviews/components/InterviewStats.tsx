@@ -17,8 +17,8 @@ export function InterviewStats() {
   }
 
   const statItems = [
-    { label: 'Available Slots', value: stats.availableSlots, icon: CalendarDays, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Booked Slots', value: stats.bookedSlots, icon: CalendarCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Available Slots', value: stats.availableSlots, icon: CalendarDays, color: 'text-teal-600', bg: 'bg-teal-50' },
+    { label: 'Booked Slots', value: stats.bookedSlots, icon: CalendarCheck, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     { label: "Today's Interviews", value: stats.todayInterviews, icon: Users, color: 'text-amber-600', bg: 'bg-amber-50' },
     { label: 'Upcoming', value: stats.upcomingInterviews, icon: CalendarClock, color: 'text-purple-600', bg: 'bg-purple-50' },
     { label: 'Completed', value: stats.completedInterviews, icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-50' },

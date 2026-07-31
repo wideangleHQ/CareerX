@@ -20,7 +20,7 @@ interface OfferActionsDropdownProps {
 
 const VALID_TRANSITIONS: Record<string, { status: OfferStatus; label: string; icon: React.ReactNode; className?: string }[]> = {
   GENERATED: [
-    { status: 'RELEASED', label: 'Release Offer', icon: <Send className="mr-2 h-4 w-4 text-blue-500" /> },
+    { status: 'RELEASED', label: 'Release Offer', icon: <Send className="mr-2 h-4 w-4 text-teal-500" /> },
     { status: 'CANCELLED', label: 'Cancel Offer', icon: <Ban className="mr-2 h-4 w-4 text-neutral-500" />, className: 'text-red-600 focus:text-red-600' },
   ],
   RELEASED: [
@@ -52,7 +52,7 @@ export function OfferActionsDropdown({ offer, onExtend }: OfferActionsDropdownPr
       <DropdownMenuContent align="end" className="w-[180px]">
         <DropdownMenuItem asChild className="cursor-pointer">
           <Link href={`/offers/${offer.id}`}>
-            <Eye className="mr-2 h-4 w-4 text-blue-500" />
+            <Eye className="mr-2 h-4 w-4 text-primary" />
             <span>View Details</span>
           </Link>
         </DropdownMenuItem>

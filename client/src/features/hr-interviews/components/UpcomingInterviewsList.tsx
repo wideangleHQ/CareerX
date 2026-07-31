@@ -52,7 +52,7 @@ export function UpcomingInterviewsList({ dateFilter }: UpcomingInterviewsListPro
               <div key={interview.id} className="p-4 hover:bg-neutral-50/50 transition-colors">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className="h-10 w-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                    <div className="h-10 w-10 rounded-full bg-emerald-50 flex items-center justify-center text-primary shrink-0">
                       <User className="h-5 w-5" />
                     </div>
                     <div className="min-w-0">
@@ -70,7 +70,7 @@ export function UpcomingInterviewsList({ dateFilter }: UpcomingInterviewsListPro
                           {new Date(interview.slotDate).toLocaleDateString()}
                         </div>
                         <div className="flex items-center gap-1.5 text-neutral-700 bg-white border px-2 py-1 rounded-md shadow-sm whitespace-nowrap">
-                          <Video className="h-3.5 w-3.5 text-blue-500" />
+                          <Video className="h-3.5 w-3.5 text-primary" />
                           {formatSlotTime(interview.slotTime)}
                         </div>
                       </div>

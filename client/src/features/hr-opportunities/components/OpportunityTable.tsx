@@ -52,7 +52,35 @@ export function OpportunityTable({ opportunities, isLoading, onEdit, onPreview }
   }
 
   return (
-    <div className="w-full overflow-auto">
+    <>
+    {/* Mobile card view */}
+    <div className="block md:hidden divide-y divide-neutral-100">
+      {opportunities.map((opp) => (
+        <div key={opp.id} className="p-4 hover:bg-neutral-50/50 transition-colors">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-neutral-900 truncate">{opp.public_title}</p>
+              <p className="text-xs text-neutral-500 mt-0.5">{opp.department?.name || 'Any'} &middot; {opp.hiring_type.replace('_', ' ')}</p>
+              <div className="flex items-center gap-2 mt-2">
+                <OpportunityStatusBadge status={opp.status} />
+                <span className="text-xs text-neutral-500">{opp._count?.applications || 0} apps</span>
+              </div>
+              <p className="text-[11px] text-neutral-400 mt-1">
+                Updated {format(new Date(opp.updated_at), 'MMM d, yyyy')}
+              </p>
+            </div>
+            <OpportunityActionsDropdown
+              opportunity={opp}
+              onEdit={() => onEdit(opp)}
+              onPreview={() => onPreview(opp)}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Desktop table view */}
+    <div className="hidden md:block w-full overflow-auto">
       <Table>
         <TableHeader>
           <TableRow className="bg-neutral-50/50 hover:bg-neutral-50/50">
@@ -89,7 +117,7 @@ export function OpportunityTable({ opportunities, isLoading, onEdit, onPreview }
               <TableCell>
                 <div className="flex items-center justify-center gap-3">
                   <div className="flex flex-col items-center">
-                    <span className="text-sm font-semibold text-blue-600">{opp._count?.applications || 0}</span>
+                    <span className="text-sm font-semibold text-primary">{opp._count?.applications || 0}</span>
                     <span className="text-[10px] text-neutral-500 uppercase">Apps</span>
                   </div>
                 </div>
@@ -114,5 +142,6 @@ export function OpportunityTable({ opportunities, isLoading, onEdit, onPreview }
         </TableBody>
       </Table>
     </div>
+    </>
   );
 }

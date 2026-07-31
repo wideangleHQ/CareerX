@@ -34,12 +34,12 @@ export default function SettingsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <div className="overflow-x-auto pb-2 custom-scrollbar">
           <TabsList className="bg-neutral-100/50 p-1 mb-4 h-auto inline-flex">
-            <TabsTrigger value="profile" className="cursor-pointer text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">Profile</TabsTrigger>
-            <TabsTrigger value="security" className="cursor-pointer text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">Security & Permissions</TabsTrigger>
-            <TabsTrigger value="email" className="cursor-pointer text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">Email Templates</TabsTrigger>
-            <TabsTrigger value="general" className="cursor-pointer text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">Company & General</TabsTrigger>
-            <TabsTrigger value="interview" className="cursor-pointer text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">Interview Config</TabsTrigger>
-            <TabsTrigger value="departments" className="cursor-pointer text-xs py-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">Departments</TabsTrigger>
+            <TabsTrigger value="profile" className="cursor-pointer text-xs py-2 data-[selected]:bg-white data-[selected]:shadow-sm data-[active]:bg-white data-[active]:shadow-sm">Profile</TabsTrigger>
+            <TabsTrigger value="security" className="cursor-pointer text-xs py-2 data-[selected]:bg-white data-[selected]:shadow-sm data-[active]:bg-white data-[active]:shadow-sm">Security & Permissions</TabsTrigger>
+            <TabsTrigger value="email" className="cursor-pointer text-xs py-2 data-[selected]:bg-white data-[selected]:shadow-sm data-[active]:bg-white data-[active]:shadow-sm">Email Templates</TabsTrigger>
+            <TabsTrigger value="general" className="cursor-pointer text-xs py-2 data-[selected]:bg-white data-[selected]:shadow-sm data-[active]:bg-white data-[active]:shadow-sm">Company & General</TabsTrigger>
+            <TabsTrigger value="interview" className="cursor-pointer text-xs py-2 data-[selected]:bg-white data-[selected]:shadow-sm data-[active]:bg-white data-[active]:shadow-sm">Interview Config</TabsTrigger>
+            <TabsTrigger value="departments" className="cursor-pointer text-xs py-2 data-[selected]:bg-white data-[selected]:shadow-sm data-[active]:bg-white data-[active]:shadow-sm">Departments</TabsTrigger>
           </TabsList>
         </div>
 

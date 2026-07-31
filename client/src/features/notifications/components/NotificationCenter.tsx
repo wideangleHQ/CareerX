@@ -22,7 +22,7 @@ export function NotificationCenter() {
       case 'WARNING': return <AlertTriangle className="h-5 w-5 text-amber-500" />;
       case 'ERROR': return <AlertCircle className="h-5 w-5 text-red-500" />;
       case 'INFO':
-      default: return <Info className="h-5 w-5 text-blue-500" />;
+      default: return <Info className="h-5 w-5 text-teal-500" />;
     }
   };
 

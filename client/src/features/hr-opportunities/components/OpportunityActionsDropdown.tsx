@@ -39,7 +39,7 @@ export function OpportunityActionsDropdown({ opportunity, onEdit, onPreview }: O
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-[160px]">
         <DropdownMenuItem onClick={onPreview} className="cursor-pointer">
-          <Eye className="mr-2 h-4 w-4 text-blue-500" />
+          <Eye className="mr-2 h-4 w-4 text-primary" />
           <span>Preview</span>
         </DropdownMenuItem>
 

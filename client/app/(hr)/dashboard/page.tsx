@@ -38,7 +38,7 @@ export default function DashboardPage() {
 
       {/* KPI Stats */}
       {stats.isLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="bg-white p-6 rounded-xl border space-y-2">
               <Skeleton className="h-3 w-24" />
@@ -48,7 +48,7 @@ export default function DashboardPage() {
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard
             title="Total Applications"
             value={stats.totalApplications}
@@ -59,7 +59,7 @@ export default function DashboardPage() {
             title="Pending Review"
             value={stats.newApplications}
             description="Awaiting initial evaluation"
-            icon={<Users className="h-4.5 w-4.5 text-blue-600" />}
+            icon={<Users className="h-4.5 w-4.5 text-teal-600" />}
           />
           <StatCard
             title="Scheduled Interviews"
@@ -77,7 +77,7 @@ export default function DashboardPage() {
             title="Offers Released"
             value={stats.releasedOffers}
             description="Awaiting candidate response"
-            icon={<Send className="h-4.5 w-4.5 text-blue-500" />}
+            icon={<Send className="h-4.5 w-4.5 text-emerald-600" />}
           />
           <StatCard
             title="Offers Accepted"

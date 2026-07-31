@@ -3,7 +3,7 @@ import { cn } from "@/src/lib/utils"
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-auto custom-scrollbar border rounded-lg">
+    <div data-slot="table-container" className="relative w-full overflow-auto custom-scrollbar">
       <table
         data-slot="table"
         className={cn("w-full caption-bottom text-sm border-collapse", className)}
@@ -17,7 +17,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("[&_tr]:border-b bg-muted/40", className)}
+      className={cn("[&_tr]:border-b bg-muted/40 sticky top-0 z-10", className)}
       {...props}
     />
   )

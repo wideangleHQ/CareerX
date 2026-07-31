@@ -30,7 +30,7 @@ export function OfferStats() {
   }
 
   const statCards = [
-    { title: 'Released', value: stats?.RELEASED || 0, icon: <Send className="h-5 w-5 text-blue-500" />, bg: 'bg-blue-50' },
+    { title: 'Released', value: stats?.RELEASED || 0, icon: <Send className="h-5 w-5 text-teal-500" />, bg: 'bg-teal-50' },
     { title: 'Accepted', value: stats?.ACCEPTED || 0, icon: <CheckCircle className="h-5 w-5 text-green-500" />, bg: 'bg-green-50' },
     { title: 'Declined', value: stats?.DECLINED || 0, icon: <XCircle className="h-5 w-5 text-red-500" />, bg: 'bg-red-50' },
     { title: 'Expired', value: stats?.EXPIRED || 0, icon: <Clock className="h-5 w-5 text-orange-500" />, bg: 'bg-orange-50' },

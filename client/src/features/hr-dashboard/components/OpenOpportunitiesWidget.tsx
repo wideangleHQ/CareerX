@@ -50,7 +50,7 @@ export function OpenOpportunitiesWidget() {
                 </div>
                 <div className="flex items-center gap-2 ml-3 shrink-0">
                   {opp.numberOfOpenings && (
-                    <Badge variant="secondary" className="text-[10px] bg-blue-50 text-blue-700">
+                    <Badge variant="secondary" className="text-[10px] bg-emerald-50 text-emerald-700">
                       {opp.numberOfOpenings} openings
                     </Badge>
                   )}

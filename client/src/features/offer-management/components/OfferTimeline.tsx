@@ -21,12 +21,12 @@ interface OfferTimelineProps {
 
 const EVENT_CONFIG: Record<string, { icon: React.ReactNode; color: string }> = {
   OFFER_GENERATED: { icon: <FileSignature className="h-4 w-4" />, color: 'text-amber-600 bg-amber-100' },
-  OFFER_RELEASED: { icon: <Send className="h-4 w-4" />, color: 'text-blue-600 bg-blue-100' },
+  OFFER_RELEASED: { icon: <Send className="h-4 w-4" />, color: 'text-teal-600 bg-teal-100' },
   OFFER_ACCEPTED: { icon: <CheckCircle className="h-4 w-4" />, color: 'text-green-600 bg-green-100' },
   OFFER_DECLINED: { icon: <XCircle className="h-4 w-4" />, color: 'text-red-600 bg-red-100' },
   APPLICATION_SUBMITTED: { icon: <FileText className="h-4 w-4" />, color: 'text-neutral-600 bg-neutral-100' },
   STATUS_CHANGED: { icon: <Clock className="h-4 w-4" />, color: 'text-neutral-600 bg-neutral-100' },
-  INTERVIEW_SCHEDULED: { icon: <Clock className="h-4 w-4" />, color: 'text-blue-600 bg-blue-100' },
+  INTERVIEW_SCHEDULED: { icon: <Clock className="h-4 w-4" />, color: 'text-amber-600 bg-amber-100' },
   INTERVIEW_COMPLETED: { icon: <CheckCircle className="h-4 w-4" />, color: 'text-green-600 bg-green-100' },
   FEEDBACK_ADDED: { icon: <FileText className="h-4 w-4" />, color: 'text-neutral-600 bg-neutral-100' },
   DOCUMENT_UPLOADED: { icon: <FileText className="h-4 w-4" />, color: 'text-neutral-600 bg-neutral-100' },

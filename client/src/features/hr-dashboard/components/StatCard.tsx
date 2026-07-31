@@ -10,16 +10,16 @@ interface StatCardProps {
 
 export function StatCard({ title, value, description, icon }: StatCardProps) {
   return (
-    <Card className="border-neutral-200">
-      <CardContent className="p-6">
+    <Card className="border-neutral-200 hover:border-primary/20 transition-colors">
+      <CardContent className="p-5 sm:p-6">
         <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{title}</p>
-            <p className="text-2xl font-bold text-black">{value}</p>
+          <div className="space-y-1 min-w-0">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider truncate">{title}</p>
+            <p className="text-2xl font-bold text-neutral-900">{value}</p>
           </div>
-          {icon && <div className="rounded-lg bg-neutral-50 p-2 text-neutral-600">{icon}</div>}
+          {icon && <div className="rounded-lg bg-primary/5 p-2.5 shrink-0">{icon}</div>}
         </div>
-        {description && <p className="text-xs text-muted-foreground mt-2">{description}</p>}
+        {description && <p className="text-[11px] text-muted-foreground mt-2 truncate">{description}</p>}
       </CardContent>
     </Card>
   );
