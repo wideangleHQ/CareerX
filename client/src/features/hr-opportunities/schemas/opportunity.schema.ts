@@ -15,8 +15,8 @@ export const OpportunityInternalSchema = z.object({
   hiring_priority: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']),
   hiring_type: z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACT', 'INTERNSHIP', 'FREELANCE']),
   career_level: z.enum(['ENTRY_LEVEL', 'JUNIOR', 'MID_LEVEL', 'SENIOR', 'LEAD', 'MANAGER', 'DIRECTOR', 'EXECUTIVE']),
-  hiring_manager_id: z.string().nullish(),
-  reporting_manager_id: z.string().nullish(),
+  hiring_manager_id: z.preprocess(blankToUndefined, z.string().nullish()),
+  reporting_manager_id: z.preprocess(blankToUndefined, z.string().nullish()),
   number_of_openings: z.preprocess(
     blankToUndefined,
     z.coerce.number({ error: 'Number of openings is required' }).min(1, 'Must have at least 1 opening'),
