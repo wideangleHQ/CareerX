@@ -54,7 +54,7 @@ export function useUpcomingInterviews(dateFilter?: string) {
     ...slot,
     candidateName: slot.assignment?.application.candidate.fullName ?? 'Unknown candidate',
     applicationCode: slot.assignment?.application.applicationCode ?? '—',
-    status: slot.assignment?.application.status ?? 'SLOT_BOOKED',
+    status: slot.assignment?.application.status ?? 'ACCEPTED',
     meetingMode: 'Video Call',
   }));
 

@@ -11,7 +11,7 @@ export class OpportunitiesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
-  ) {}
+  ) { }
 
   async create(dto: any) {
     try {
@@ -28,7 +28,7 @@ export class OpportunitiesService {
         department_id: dto.department_id,
         public_title: dto.public_title,
         location: dto.location,
-        
+
         // Fields with defaults in schema
         number_of_openings: dto.number_of_openings ?? 1,
         hiring_priority: dto.hiring_priority ?? 'MEDIUM',
@@ -42,37 +42,37 @@ export class OpportunitiesService {
         interview_rounds: dto.interview_rounds ?? 1,
         status: dto.status ?? 'DRAFT',
         visibility: dto.visibility ?? 'CAREER_PORTAL',
-        
+
         // Optional text fields
         internal_notes: dto.internal_notes ?? null,
         about: dto.about ?? null,
         responsibilities: dto.responsibilities ?? null,
         benefits: dto.benefits ?? null,
         career_growth: dto.career_growth ?? null,
-        
+
         // Optional UUID fields
-        hiring_manager_id: dto.hiring_manager_id ?? null,
-        reporting_manager_id: dto.reporting_manager_id ?? null,
-        
+        hiring_manager_id: dto.hiring_manager_id || null,
+        reporting_manager_id: dto.reporting_manager_id || null,
+
         // Optional numeric fields
         max_experience_years: dto.max_experience_years ?? null,
         age_limit: dto.age_limit ?? null,
         min_salary: dto.min_salary ?? null,
         max_salary: dto.max_salary ?? null,
-        
+
         // Optional string fields
         educational_qualification: dto.educational_qualification ?? null,
         preferred_industry: dto.preferred_industry ?? null,
         interview_location: dto.interview_location ?? null,
         meeting_link: dto.meeting_link ?? null,
-        
+
         // Optional date field
         application_deadline: dto.application_deadline ? new Date(dto.application_deadline) : null,
-        
+
         // Array fields (default to empty arrays)
         preferred_languages: dto.preferred_languages ?? [],
         certifications: dto.certifications ?? [],
-        
+
         // Timestamps - let DB defaults handle these
         // created_at and updated_at have @default(now())
       };
@@ -288,8 +288,13 @@ export class OpportunitiesService {
     const updateData: Record<string, any> = { updated_at: new Date() };
     for (const key of Object.keys(dto)) {
       if (ALLOWED_FIELDS.has(key)) {
+        if (key === 'department_id' && dto[key] === '') {
+          throw new BadRequestException('department_id cannot be empty');
+        }
         if (key === 'application_deadline' && dto[key]) {
           updateData[key] = new Date(dto[key]);
+        } else if ((key === 'hiring_manager_id' || key === 'reporting_manager_id') && dto[key] === '') {
+          updateData[key] = null;
         } else {
           updateData[key] = dto[key];
         }

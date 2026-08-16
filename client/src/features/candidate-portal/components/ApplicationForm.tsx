@@ -286,15 +286,24 @@ export function ApplicationForm() {
             />
           )}
 
-          {/* Error Message — surface the backend's business-rule message (e.g. duplicate
-              application, deadline passed) instead of the generic Axios "status code 409". */}
-          {submitMutation.isError && (
-            <p className="text-sm text-red-500 bg-red-50 border border-red-100 rounded-lg p-3">
-              {(submitMutation.error as any)?.response?.data?.message
-                || (submitMutation.error as any)?.message
-                || 'Failed to submit application. Please try again.'}
-            </p>
-          )}
+          {submitMutation.isError && (() => {
+            const errData = (submitMutation.error as any)?.response?.data;
+            const msg = errData?.message
+              || (submitMutation.error as any)?.message
+              || 'Something went wrong. Please try again later.';
+            return (
+              <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg p-3 space-y-1">
+                <p>{msg}</p>
+                {errData?.fields && typeof errData.fields === 'object' && (
+                  <ul className="list-disc list-inside text-xs text-red-500">
+                    {Object.values(errData.fields as Record<string, string>).map((v, i) => (
+                      <li key={i}>{v}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Submit */}
           <Button

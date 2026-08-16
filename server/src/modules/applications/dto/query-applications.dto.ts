@@ -28,7 +28,7 @@ export interface QueryApplicationsDto {
 }
 
 const SCOPES = new Set<ApplicationScope>(['all', 'mine']);
-const STATUSES = new Set(['NEW', 'SLOT_BOOKED', 'INTERVIEWED', 'SHORTLISTED', 'SELECTED', 'OFFER_RELEASED', 'JOINED', 'REJECTED', 'WITHDRAWN']);
+const STATUSES = new Set(['PENDING', 'ACCEPTED', 'INTERVIEWED', 'SHORTLISTED', 'SELECTED', 'OFFER_RELEASED', 'JOINED', 'REJECTED', 'WITHDRAWN']);
 const SORT_FIELDS = new Set(['createdAt', 'updatedAt', 'status', 'candidateName', 'department', 'assignedHr', 'priority', 'interviewDate']);
 const SORT_ORDERS = new Set(['asc', 'desc']);
 

@@ -62,9 +62,9 @@ export default function DashboardPage() {
             icon={<Users className="h-4.5 w-4.5 text-teal-600" />}
           />
           <StatCard
-            title="Scheduled Interviews"
-            value={stats.interviewsScheduled}
-            description="Booked candidate slots"
+            title="Accepted"
+            value={stats.acceptedApplications}
+            description="Passed pre-interview screening"
             icon={<Calendar className="h-4.5 w-4.5 text-amber-600" />}
           />
           <StatCard

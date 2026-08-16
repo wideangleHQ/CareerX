@@ -7,7 +7,7 @@ import { opportunitiesApi } from '@/src/api/opportunities';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, MapPin, Briefcase, Clock, GraduationCap, CheckCircle2, Loader2, DollarSign, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, MapPin, Briefcase, Clock, GraduationCap, CheckCircle2, Loader2, IndianRupee, AlertTriangle } from 'lucide-react';
 
 function mapRawToPublic(opp: any) {
   return {
@@ -22,7 +22,7 @@ function mapRawToPublic(opp: any) {
       ? `${opp.min_experience_years} - ${opp.max_experience_years} Years`
       : `${opp.min_experience_years}+ Years`,
     salaryRange: opp.min_salary && opp.max_salary
-      ? `${opp.min_salary} - ${opp.max_salary}`
+      ? `₹${Number(opp.min_salary).toLocaleString('en-IN')} - ₹${Number(opp.max_salary).toLocaleString('en-IN')}`
       : undefined,
     about: opp.about || undefined,
     responsibilities: opp.responsibilities || undefined,
@@ -231,7 +231,7 @@ export default function JobDetailsPage() {
               )}
               {job.salaryRange && (
                 <li className="flex gap-3">
-                  <DollarSign className="h-5 w-5 text-primary shrink-0" />
+                  <IndianRupee className="h-5 w-5 text-primary shrink-0" />
                   <div>
                     <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Salary Range</p>
                     <p className="text-sm font-medium text-neutral-900 mt-0.5">

@@ -35,12 +35,15 @@ export function ApplicationFilters({
 
   const statuses: { label: string; value: ApplicationStatus | 'ALL' }[] = [
     { label: 'All', value: 'ALL' },
-    { label: 'Pending Review', value: 'NEW' },
-    { label: 'Slot Booked', value: 'SLOT_BOOKED' },
-    { label: 'Interview Scheduled', value: 'INTERVIEWED' },
-    { label: 'Offer Sent', value: 'OFFER_RELEASED' },
-    { label: 'Hired', value: 'JOINED' },
+    { label: 'Pending', value: 'PENDING' },
+    { label: 'Accepted', value: 'ACCEPTED' },
+    { label: 'Interviewed', value: 'INTERVIEWED' },
+    { label: 'Shortlisted', value: 'SHORTLISTED' },
+    { label: 'Selected', value: 'SELECTED' },
+    { label: 'Offer Released', value: 'OFFER_RELEASED' },
+    { label: 'Joined', value: 'JOINED' },
     { label: 'Rejected', value: 'REJECTED' },
+    { label: 'Withdrawn', value: 'WITHDRAWN' },
   ];
 
   const hasActiveFilters = search || status !== 'ALL' || departmentId !== 'ALL';

@@ -25,8 +25,8 @@ interface CandidateProfileProps {
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  NEW: 'bg-neutral-100 text-neutral-700',
-  SLOT_BOOKED: 'bg-amber-50 text-amber-700',
+  PENDING: 'bg-yellow-50 text-yellow-700',
+  ACCEPTED: 'bg-green-50 text-green-700',
   INTERVIEWED: 'bg-purple-50 text-purple-700',
   SHORTLISTED: 'bg-teal-50 text-teal-700',
   SELECTED: 'bg-emerald-50 text-emerald-700',
@@ -152,7 +152,7 @@ export function CandidateProfile({ candidateId, applicationId }: CandidateProfil
     .substring(0, 2)
     .toUpperCase();
 
-  const statusStyle = STATUS_STYLES[activeApplication?.status ?? ''] ?? STATUS_STYLES.NEW;
+  const statusStyle = STATUS_STYLES[activeApplication?.status ?? ''] ?? STATUS_STYLES.PENDING;
 
   return (
     <div className="flex flex-col h-full">

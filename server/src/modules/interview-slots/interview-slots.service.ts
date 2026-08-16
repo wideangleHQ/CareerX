@@ -232,7 +232,7 @@ export class InterviewSlotsService {
           select: { id: true, department_id: true, status: true, application_code: true, slot_assignment: { select: { id: true } } },
         });
         if (!application) throw new NotFoundException('Application not found');
-        if (application.status !== 'NEW' || application.slot_assignment) {
+        if (application.status !== 'ACCEPTED' || application.slot_assignment) {
           throw new ConflictException('Conflict: Application is already processed or booked');
         }
         if (slot.department_id && slot.department_id !== application.department_id) {
@@ -259,13 +259,12 @@ export class InterviewSlotsService {
         await tx.applications.update({
           where: { id: dto.applicationId },
           data: {
-            status: 'SLOT_BOOKED',
             assigned_hr_id: slotOwnerHrId,
             updated_at: new Date(),
             status_history: {
               create: {
-                from_status: 'NEW',
-                to_status: 'SLOT_BOOKED',
+                from_status: 'ACCEPTED',
+                to_status: 'ACCEPTED',
                 changed_by_id: null,
                 reason: 'Interview slot booked',
               },
@@ -293,15 +292,23 @@ export class InterviewSlotsService {
         hrId: result.slotOwnerHrId,
       });
 
-      return { 
-        success: true, 
-        data: { 
-          bookingReference: result.applicationCode, 
-          interviewDate: result.slotDate.toISOString(), 
-          interviewTime: result.slotTime, 
-          nextStepInstructions: 'Please check your email for the interview meeting link and instructions.' 
-        } 
-      } as any; // Type override since we are deliberately changing the payload per requirements
+      const dateStr = result.slotDate instanceof Date
+        ? result.slotDate.toISOString().split('T')[0]
+        : String(result.slotDate).split('T')[0];
+      const timeStr = result.slotTime instanceof Date
+        ? result.slotTime.toISOString().match(/T(\d{2}:\d{2})/)?.[1] ?? '00:00'
+        : String(result.slotTime).match(/(\d{2}:\d{2})/)?.[1] ?? '00:00';
+
+      return {
+        success: true,
+        data: {
+          assignmentId: result.created.id,
+          bookingReference: result.applicationCode,
+          interviewDate: dateStr,
+          interviewTime: timeStr,
+          nextStepInstructions: 'Please check your email for the interview meeting link and instructions.'
+        }
+      } as any;
     } catch (error) {
       if (error instanceof NotFoundException || error instanceof ConflictException) throw error;
       if (this.isUniqueError(error)) throw new ConflictException('Conflict');

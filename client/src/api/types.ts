@@ -1,6 +1,6 @@
 export type ApplicationStatus =
-  | 'NEW'
-  | 'SLOT_BOOKED'
+  | 'PENDING'
+  | 'ACCEPTED'
   | 'INTERVIEWED'
   | 'SHORTLISTED'
   | 'SELECTED'
@@ -270,10 +270,20 @@ export interface QuerySlotsParams {
 export interface DashboardStats {
   totalApplications: number;
   newApplications: number;
-  interviewsScheduled: number;
-  hiredCount: number;
+  acceptedApplications: number;
+  selectedCount: number;
+  offersReleased: number;
+  joinedCount: number;
   rejectedCount: number;
-  recentApplications: Application[];
+  byStatus: Record<ApplicationStatus, number>;
+  recentApplications: Array<{
+    id: string;
+    applicationCode: string;
+    status: ApplicationStatus;
+    candidateName: string;
+    departmentName: string;
+    createdAt: string;
+  }>;
 }
 
 export interface ApplicationReportItem {

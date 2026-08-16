@@ -249,8 +249,8 @@ export class DepartmentsService {
             hiring_priority: dto.hiringPriority || 'MEDIUM',
             hiring_type: dto.hiringType || 'FULL_TIME',
             confidentiality_level: dto.confidentialityLevel || 'STANDARD',
-            hiring_manager_id: dto.hiringManagerId,
-            reporting_manager_id: dto.reportingManagerId,
+            hiring_manager_id: dto.hiringManagerId || null,
+            reporting_manager_id: dto.reportingManagerId || null,
             internal_notes: dto.internalNotes,
 
             public_title: dto.publicTitle || existing.name,

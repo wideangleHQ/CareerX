@@ -17,6 +17,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
 import { CareerJwtAuthGuard } from '../../common/guards/career-jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
+import { PublicRateLimitGuard } from '../../common/guards/rate-limit.guard';
 import type { CareerJwtPayload } from '../auth/interfaces/auth.interfaces';
 import { ApplicationsService } from './applications.service';
 import type { ApplicationUploadFile } from './applications.service';
@@ -34,6 +35,7 @@ export class ApplicationsController {
   constructor(private readonly applicationsService: ApplicationsService) {}
 
   @Post()
+  @UseGuards(PublicRateLimitGuard)
   @UseInterceptors(FileFieldsInterceptor([
     { name: 'resume', maxCount: 1 },
     { name: 'previousOrgProof', maxCount: 1 },

@@ -4,9 +4,9 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { applicationsApi } from '@/src/api/applications';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Loader2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { StatusDropdown } from '@/src/features/hr-applications/components/StatusDropdown';
 
 export function PendingApplicationsWidget() {
   const { data: appResponse, isLoading } = useQuery({
@@ -42,21 +42,26 @@ export function PendingApplicationsWidget() {
         ) : (
           <div className="divide-y divide-neutral-100">
             {applications.map((app) => (
-              <div key={app.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between text-sm">
-                <div>
+              <div key={app.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3 text-sm">
+                <div className="min-w-0">
                   <Link
                     href={`/applications/${app.id}`}
                     className="font-medium text-black hover:underline"
                   >
                     {app.candidate.fullName}
                   </Link>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
                     {app.department.name} • {app.applicationCode}
                   </p>
                 </div>
-                <Badge variant="secondary" className="text-[10px] bg-neutral-100 border-neutral-200">
-                  {new Date(app.createdAt).toLocaleDateString()}
-                </Badge>
+                <div className="shrink-0">
+                  <StatusDropdown
+                    applicationId={app.id}
+                    currentStatus={app.status}
+                    candidateName={app.candidate.fullName}
+                    compact
+                  />
+                </div>
               </div>
             ))}
           </div>

@@ -3,7 +3,7 @@
 import React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { StatusBadge } from './StatusBadge';
+import { StatusDropdown } from './StatusDropdown';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -84,7 +84,7 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
                   >
                     {app.candidate.fullName}
                   </button>
-                  <StatusBadge status={app.status} />
+                  <StatusDropdown applicationId={app.id} currentStatus={app.status} candidateName={app.candidate.fullName} compact />
                 </div>
                 <p className="text-xs text-neutral-500 mt-0.5 truncate">{app.opportunity?.title || 'No position'}</p>
                 <p className="text-xs text-neutral-400 mt-0.5">{app.department.name} &middot; {app.applicationCode}</p>
@@ -96,14 +96,16 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
                   )}
                 </div>
               </div>
-              <Button
-                variant="outline"
-                size="xs"
-                onClick={() => openWorkspace(app)}
-                className="cursor-pointer shrink-0"
-              >
-                <Eye className="mr-1 h-3.5 w-3.5" /> View
-              </Button>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="outline"
+                  size="xs"
+                  onClick={() => openWorkspace(app)}
+                  className="cursor-pointer"
+                >
+                  <Eye className="mr-1 h-3.5 w-3.5" /> View
+                </Button>
+              </div>
             </div>
           </div>
         ))}
@@ -239,7 +241,7 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
               {app.opportunity?.priority || '-'}
             </TableCell>
             <TableCell>
-              <StatusBadge status={app.status} />
+              <StatusDropdown applicationId={app.id} currentStatus={app.status} candidateName={app.candidate.fullName} compact />
             </TableCell>
             <TableCell className="text-right">
               <Button

@@ -2,12 +2,26 @@
 
 import React, { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import axiosClient from '@/src/api/client';
 import { applicationsApi } from '@/src/api/applications';
 import { ApplicationFilters } from '@/src/features/hr-applications/components/ApplicationFilters';
 import { ApplicationTable } from '@/src/features/hr-applications/components/ApplicationTable';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, ListFilter, Users, User } from 'lucide-react';
 import type { ApplicationScope, ApplicationStatus, QueryApplicationsParams } from '@/src/api/types';
+
+const STATUS_TABS: { label: string; value: ApplicationStatus | 'ALL' }[] = [
+  { label: 'All', value: 'ALL' },
+  { label: 'Pending', value: 'PENDING' },
+  { label: 'Accepted', value: 'ACCEPTED' },
+  { label: 'Interviewed', value: 'INTERVIEWED' },
+  { label: 'Shortlisted', value: 'SHORTLISTED' },
+  { label: 'Selected', value: 'SELECTED' },
+  { label: 'Offer Released', value: 'OFFER_RELEASED' },
+  { label: 'Joined', value: 'JOINED' },
+  { label: 'Rejected', value: 'REJECTED' },
+  { label: 'Withdrawn', value: 'WITHDRAWN' },
+];
 
 export default function ApplicationsPage() {
   const [scope, setScope] = useState<ApplicationScope>('all');
@@ -25,6 +39,17 @@ export default function ApplicationsPage() {
     setCursorHistory([undefined]);
     setCurrentPage(1);
   }, []);
+
+  const { data: statsData } = useQuery({
+    queryKey: ['dashboard', 'stats'],
+    queryFn: async () => {
+      const { data } = await axiosClient.get('/api/v1/dashboard/stats');
+      return data;
+    },
+  });
+
+  const byStatus: Record<string, number> = statsData?.data?.byStatus ?? {};
+  const totalApplications: number = statsData?.data?.totalApplications ?? 0;
 
   const { data: response, isLoading } = useQuery({
     queryKey: ['applications', scope, search, status, departmentId, cursor, limit],
@@ -79,6 +104,11 @@ export default function ApplicationsPage() {
     }
   };
 
+  const handleStatusTabChange = (val: string) => {
+    setStatus(val);
+    resetPagination();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
@@ -114,6 +144,32 @@ export default function ApplicationsPage() {
           <User className="h-4 w-4" />
           My Applications
         </button>
+      </div>
+
+      {/* Status tabs with counts */}
+      <div className="flex gap-2 flex-wrap">
+        {STATUS_TABS.map((tab) => {
+          const count = tab.value === 'ALL' ? totalApplications : (byStatus[tab.value] ?? 0);
+          const isActive = status === tab.value;
+          return (
+            <button
+              key={tab.value}
+              onClick={() => handleStatusTabChange(tab.value)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-colors cursor-pointer border ${
+                isActive
+                  ? 'bg-primary text-white border-primary'
+                  : 'bg-white text-neutral-600 border-neutral-200 hover:border-neutral-400 hover:bg-neutral-50'
+              }`}
+            >
+              {tab.label}
+              <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold ${
+                isActive ? 'bg-white/20 text-white' : 'bg-neutral-100 text-neutral-500'
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <ApplicationFilters

@@ -229,7 +229,7 @@ export class ReportsRepository {
     const selected = (counts['SELECTED'] || 0) + offersReleased;
     const shortlisted = (counts['SHORTLISTED'] || 0) + selected;
     const interviewed = (counts['INTERVIEWED'] || 0) + shortlisted;
-    const interviewScheduled = (counts['SLOT_BOOKED'] || 0) + interviewed;
+    const interviewScheduled = (counts['ACCEPTED'] || 0) + interviewed;
     const applications = total;
 
     return {

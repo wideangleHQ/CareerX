@@ -26,19 +26,23 @@ export function useSubmitApplication() {
       const applicationId = applicationRes.data.id;
 
       if (data.slotId) {
-        const bookingRes = await interviewsApi.book({
-          applicationId,
-          slotId: data.slotId,
-        });
+        try {
+          const bookingRes = await interviewsApi.book({
+            applicationId,
+            slotId: data.slotId,
+          });
 
-        if (!bookingRes.success) {
-          throw new Error('Failed to book interview slot');
+          if (bookingRes.success) {
+            return {
+              application: applicationRes.data,
+              booking: bookingRes.data,
+            };
+          }
+        } catch {
+          // Slot booking requires ACCEPTED status (post-screening).
+          // Application is submitted successfully; HR will assign a slot
+          // after reviewing.
         }
-
-        return {
-          application: applicationRes.data,
-          booking: bookingRes.data,
-        };
       }
 
       return {

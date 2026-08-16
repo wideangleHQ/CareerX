@@ -170,7 +170,7 @@ model applications {
   self_description       String
   experience_years       Int?                    @db.SmallInt
   previous_org_proof_url String?                 @db.VarChar(500)
-  status                 application_status_enum @default(NEW)
+  status                 application_status_enum @default(PENDING)
   assigned_hr_id         String?                 @db.Uuid
   rejection_reason       String?
   created_at             DateTime                @default(now()) @db.Timestamptz(6)
@@ -404,8 +404,8 @@ enum visibility_enum {
 }
 
 enum application_status_enum {
-  NEW
-  SLOT_BOOKED
+  PENDING
+  ACCEPTED
   INTERVIEWED
   SHORTLISTED
   SELECTED

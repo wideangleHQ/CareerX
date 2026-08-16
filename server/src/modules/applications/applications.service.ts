@@ -4,10 +4,12 @@ import {
   Injectable,
   HttpException,
   InternalServerErrorException,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Prisma, application_status_enum } from '@prisma/client';
+import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DepartmentSyncService } from '../../integrations/performx/department-sync.service';
@@ -22,11 +24,12 @@ import type { QueryApplicationsDto } from './dto/query-applications.dto';
 import type { UpdateStatusDto } from './dto/update-status.dto';
 import { StorageBuckets } from '../../storage/storage.config';
 import { SupabaseStorageService } from '../../storage/supabase-storage.service';
+import { candidateError, ApplicationErrorCode } from '../../common/errors/application-errors';
 
-const DUPLICATE_ACTIVE_STATUSES: application_status_enum[] = ['NEW', 'SLOT_BOOKED', 'INTERVIEWED'];
+const DUPLICATE_ACTIVE_STATUSES: application_status_enum[] = ['PENDING', 'ACCEPTED', 'INTERVIEWED'];
 const STATUS_TRANSITIONS: Record<application_status_enum, application_status_enum[]> = {
-  NEW: ['SLOT_BOOKED', 'REJECTED', 'WITHDRAWN'],
-  SLOT_BOOKED: ['INTERVIEWED', 'WITHDRAWN'],
+  PENDING: ['ACCEPTED', 'REJECTED', 'WITHDRAWN'],
+  ACCEPTED: ['INTERVIEWED', 'REJECTED', 'WITHDRAWN'],
   INTERVIEWED: ['SHORTLISTED', 'SELECTED', 'REJECTED', 'WITHDRAWN'],
   SHORTLISTED: ['SELECTED', 'REJECTED', 'WITHDRAWN'],
   SELECTED: ['OFFER_RELEASED', 'REJECTED', 'WITHDRAWN'],
@@ -36,9 +39,26 @@ const STATUS_TRANSITIONS: Record<application_status_enum, application_status_enu
   WITHDRAWN: [],
 };
 
+const ALLOWED_FILE_MIMES = new Set([
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/jpeg',
+  'image/png',
+]);
+
+const ALLOWED_FILE_EXTENSIONS = new Set([
+  '.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png',
+]);
+
 function safeFileName(value: string, fallback: string): string {
   const name = value.split(/[\\/]/).pop()?.trim().replace(/[^a-zA-Z0-9._-]/g, '_');
   return name && name !== '.' && name !== '..' ? name.slice(0, 255) : fallback;
+}
+
+function getFileExtension(filename: string): string {
+  const dot = filename.lastIndexOf('.');
+  return dot === -1 ? '' : filename.slice(dot).toLowerCase();
 }
 
 export interface ApplicationUploadFile {
@@ -121,6 +141,8 @@ const applicationDetailSelect = {
 
 @Injectable()
 export class ApplicationsService {
+  private readonly logger = new Logger(ApplicationsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly events: EventEmitter,
@@ -132,13 +154,14 @@ export class ApplicationsService {
     dto: CreateApplicationDto,
     uploadFiles: ApplicationUploadFiles = {},
   ): Promise<ApplicationDetailDto> {
+    const uploadedPaths: string[] = [];
     try {
       const isDepartmentValid = await this.departmentSync.validateDepartmentId(dto.departmentId);
       if (!isDepartmentValid) {
-        throw new BadRequestException('Invalid department: department does not exist in PerformX');
+        candidateError(ApplicationErrorCode.INVALID_DEPARTMENT);
       }
 
-      return await this.prisma.$transaction(async (tx) => {
+      const application = await this.prisma.$transaction(async (tx) => {
         const opportunityWhere = dto.opportunityId
           ? { id: dto.opportunityId, status: 'PUBLISHED' as const }
           : { department_id: dto.departmentId, status: 'PUBLISHED' as const };
@@ -147,18 +170,16 @@ export class ApplicationsService {
           where: opportunityWhere,
           select: { id: true, department_id: true, application_deadline: true, resume_required: true }
         });
-        if (!opportunity) throw new ConflictException('Opportunity is not available');
+        if (!opportunity) candidateError(ApplicationErrorCode.OPPORTUNITY_UNAVAILABLE);
 
         const departmentId = opportunity.department_id;
 
         if (opportunity.application_deadline && new Date(opportunity.application_deadline) < new Date()) {
-          throw new ConflictException('Application deadline has passed');
+          candidateError(ApplicationErrorCode.DEADLINE_PASSED);
         }
 
         if (opportunity.resume_required && !uploadFiles.resume) {
-          throw new BadRequestException(
-            'Resume file upload is required; backend received metadata but no file buffer',
-          );
+          candidateError(ApplicationErrorCode.RESUME_REQUIRED);
         }
 
         let candidate = await tx.candidates.findFirst({
@@ -191,13 +212,13 @@ export class ApplicationsService {
             deleted_at: null,
             status: { in: DUPLICATE_ACTIVE_STATUSES },
           },
-          select: applicationDetailSelect,
+          select: { id: true },
         });
-        if (duplicate) return this.toDetail(duplicate);
+        if (duplicate) candidateError(ApplicationErrorCode.APPLICATION_ALREADY_EXISTS);
 
         const applicationCode = await this.generateApplicationCode(tx);
 
-        const application = await tx.applications.create({
+        return tx.applications.create({
           data: {
             application_code: applicationCode,
             candidate_id: candidate.id,
@@ -207,46 +228,53 @@ export class ApplicationsService {
             self_description: dto.selfDescription,
             experience_years: dto.experienceYears,
             previous_org_proof_url: null,
-            status: 'NEW',
+            status: 'PENDING',
             status_history: {
               create: {
                 from_status: null,
-                to_status: 'NEW',
+                to_status: 'PENDING',
                 changed_by_id: null,
                 reason: 'Application submitted',
               },
             },
           },
-          select: applicationDetailSelect,
+          select: { id: true },
         });
-
-        const fileCreates = await this.uploadApplicationFiles(application.id, dto, uploadFiles);
-
-        if (fileCreates.length > 0) {
-          await tx.candidate_files.createMany({
-            data: fileCreates.map((file) => ({
-              application_id: application.id,
-              file_type: file.file_type,
-              bucket: file.bucket,
-              storage_path: file.storage_path,
-              file_name: file.file_name,
-              file_size_kb: file.file_size_kb,
-              mime_type: file.mime_type,
-            })),
-          });
-        }
-        const persistedApplication = fileCreates.length > 0
-          ? await tx.applications.findUniqueOrThrow({ where: { id: application.id }, select: applicationDetailSelect })
-          : application;
-        const data = this.toDetail(persistedApplication);
-        this.events.emit('ApplicationCreated', { applicationId: application.id });
-        return data;
       }, { maxWait: 10000, timeout: 30000 });
+
+      const fileCreates = await this.uploadApplicationFiles(application.id, dto, uploadFiles, uploadedPaths);
+
+      if (fileCreates.length > 0) {
+        await this.prisma.candidate_files.createMany({
+          data: fileCreates.map((file) => ({
+            application_id: application.id,
+            file_type: file.file_type,
+            bucket: file.bucket,
+            storage_path: file.storage_path,
+            file_name: file.file_name,
+            file_size_kb: file.file_size_kb,
+            mime_type: file.mime_type,
+          })),
+        });
+      }
+
+      const persistedApplication = await this.prisma.applications.findUniqueOrThrow({
+        where: { id: application.id },
+        select: applicationDetailSelect,
+      });
+      const data = this.toDetail(persistedApplication);
+      this.events.emit('ApplicationCreated', { applicationId: application.id });
+      return data;
     } catch (error) {
+      this.cleanupUploadedFiles(uploadedPaths);
       if (error instanceof HttpException) throw error;
-      throw new InternalServerErrorException(
-        `Internal Server Error: ${error instanceof Error ? error.message : String(error)}`,
+      const cause = (error as any)?.cause;
+      if (cause instanceof HttpException) throw cause;
+      this.logger.error(
+        `Application create failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
       );
+      candidateError(ApplicationErrorCode.SUBMISSION_FAILED);
     }
   }
 
@@ -272,7 +300,11 @@ export class ApplicationsService {
           hasMore,
         },
       };
-    } catch {
+    } catch (error) {
+      this.logger.error(
+        `findAll failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
       throw new InternalServerErrorException('Internal Server Error');
     }
   }
@@ -493,12 +525,26 @@ export class ApplicationsService {
   private async generateApplicationCode(tx: Prisma.TransactionClient): Promise<string> {
     const year = new Date().getUTCFullYear();
     const prefix = `RC-${year}-`;
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${year})`;
 
-    const count = await tx.applications.count({
+    try {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${year})`;
+    } catch {
+      // Advisory lock may not be supported by the driver adapter; proceed without it
+    }
+
+    const latest = await tx.applications.findFirst({
       where: { application_code: { startsWith: prefix } },
+      orderBy: { application_code: 'desc' },
+      select: { application_code: true },
     });
-    const next = count + 1;
+
+    let next = 1;
+    if (latest?.application_code) {
+      const numPart = latest.application_code.slice(prefix.length);
+      const parsed = parseInt(numPart, 10);
+      if (!isNaN(parsed)) next = parsed + 1;
+    }
+
     if (next > 999999) throw new ConflictException('Conflict');
     return `${prefix}${String(next).padStart(6, '0')}`;
   }
@@ -647,7 +693,7 @@ export class ApplicationsService {
         application._count.interview_feedback > 0
           ? 'INTERVIEWED'
           : application.slot_assignment
-            ? 'SLOT_BOOKED'
+            ? 'ACCEPTED'
             : null,
       files: application.files.map((file) => ({
         id: file.id,
@@ -688,22 +734,21 @@ export class ApplicationsService {
     applicationId: string,
     dto: CreateApplicationDto,
     uploadFiles: ApplicationUploadFiles,
+    uploadedPaths: string[],
   ): Promise<UploadedCandidateFile[]> {
     const files: UploadedCandidateFile[] = [];
 
     if (dto.resumePath && !uploadFiles.resume) {
-      throw new BadRequestException(
-        'Resume file upload is required; backend received metadata but no file buffer',
-      );
+      candidateError(ApplicationErrorCode.RESUME_REQUIRED);
     }
     if (dto.previousOrgProofPath && !uploadFiles.previousOrgProof) {
-      throw new BadRequestException(
-        'Previous organization proof upload metadata was received without a file buffer',
-      );
+      candidateError(ApplicationErrorCode.VALIDATION_ERROR, {
+        previousOrgProof: 'Previous organization proof file is required.',
+      });
     }
 
     if (uploadFiles.resume) {
-      files.push(await this.uploadOneApplicationFile(applicationId, 'RESUME', uploadFiles.resume, 'resume.pdf'));
+      files.push(await this.uploadOneApplicationFile(applicationId, 'RESUME', uploadFiles.resume, 'resume', uploadedPaths));
     }
 
     if (uploadFiles.previousOrgProof) {
@@ -713,6 +758,7 @@ export class ApplicationsService {
           'ORG_PROOF',
           uploadFiles.previousOrgProof,
           'org-proof',
+          uploadedPaths,
         ),
       );
     }
@@ -725,30 +771,63 @@ export class ApplicationsService {
     fileType: 'RESUME' | 'ORG_PROOF',
     file: ApplicationUploadFile,
     fallbackFileName: string,
+    uploadedPaths: string[],
   ): Promise<UploadedCandidateFile> {
-    const fileName = safeFileName(file.originalname, fallbackFileName);
-    const storagePath = `applications/${applicationId}/${fileName}`;
-    const bucket = StorageBuckets.CANDIDATE;
-    const contentType = file.mimetype || 'application/octet-stream';
+    const ext = getFileExtension(file.originalname);
+    if (ext && !ALLOWED_FILE_EXTENSIONS.has(ext)) {
+      candidateError(ApplicationErrorCode.FILE_TYPE_NOT_ALLOWED);
+    }
 
-    await this.storage.uploadObject({
-      bucket,
-      path: storagePath,
-      contentType,
-      body: file.buffer,
-      originalName: file.originalname,
-      encoding: file.encoding,
-      size: file.size,
-    });
+    const mime = (file.mimetype || '').toLowerCase();
+    if (!mime || !ALLOWED_FILE_MIMES.has(mime)) {
+      candidateError(ApplicationErrorCode.FILE_TYPE_NOT_ALLOWED);
+    }
+
+    const originalName = safeFileName(file.originalname, fallbackFileName);
+    const uniqueId = randomUUID();
+    const fileExt = ext || '.pdf';
+    const storagePath = `applications/${applicationId}/${uniqueId}${fileExt}`;
+    const bucket = StorageBuckets.CANDIDATE;
+    const contentType = mime;
+
+    try {
+      await this.storage.uploadObject({
+        bucket,
+        path: storagePath,
+        contentType,
+        body: file.buffer,
+        originalName: file.originalname,
+        encoding: file.encoding,
+        size: file.size,
+      });
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      this.logger.error(
+        `File upload failed [applicationId=${applicationId}, fileType=${fileType}, path=${storagePath}]: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      candidateError(ApplicationErrorCode.DOCUMENT_UPLOAD_FAILED);
+    }
+
+    uploadedPaths.push(storagePath);
 
     return {
       file_type: fileType,
       bucket,
       storage_path: storagePath,
-      file_name: fileName,
+      file_name: originalName,
       file_size_kb: Math.ceil(file.size / 1024),
       mime_type: contentType,
     };
+  }
+
+  private cleanupUploadedFiles(paths: string[]): void {
+    for (const path of paths) {
+      this.storage.deleteObject({ bucket: StorageBuckets.CANDIDATE, path }).catch((err) => {
+        this.logger.warn(
+          `Orphan cleanup failed [path=${path}]: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+    }
   }
 
   async getOffer(id: string, user?: any) {

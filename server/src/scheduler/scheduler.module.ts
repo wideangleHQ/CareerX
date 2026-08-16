@@ -8,6 +8,7 @@ import { EmployeeSyncCron } from './employee-sync.cron';
 import { InterviewReminderCron } from './interview-reminder.cron';
 import { ApplicationCleanupCron } from './application-cleanup.cron';
 import { ExpiredSlotCron } from './expired-slot.cron';
+import { AutoInterviewedCron } from './auto-interviewed.cron';
 import { SchedulerHealthService } from './scheduler-health.service';
 
 @Module({
@@ -24,6 +25,7 @@ import { SchedulerHealthService } from './scheduler-health.service';
     InterviewReminderCron,
     ApplicationCleanupCron,
     ExpiredSlotCron,
+    AutoInterviewedCron,
   ],
   exports: [SchedulerHealthService],
 })

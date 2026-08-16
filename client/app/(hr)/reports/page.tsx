@@ -48,8 +48,8 @@ export default function ReportsPage() {
   }, {});
 
   const applicationChartData = [
-    { label: 'New', value: statusCounts.NEW || 0 },
-    { label: 'Slot Booked', value: statusCounts.SLOT_BOOKED || 0 },
+    { label: 'Pending', value: statusCounts.PENDING || 0 },
+    { label: 'Accepted', value: statusCounts.ACCEPTED || 0 },
     { label: 'Interviewed', value: statusCounts.INTERVIEWED || 0 },
     { label: 'Selected', value: statusCounts.SELECTED || 0 },
     { label: 'Rejected', value: statusCounts.REJECTED || 0 },

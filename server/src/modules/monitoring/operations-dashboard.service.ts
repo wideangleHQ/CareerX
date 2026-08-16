@@ -79,7 +79,7 @@ export class OperationsDashboardService {
       queueMetrics,
     ] = await Promise.all([
       this.prisma.applications.count(),
-      this.prisma.applications.count({ where: { status: 'NEW' } }),
+      this.prisma.applications.count({ where: { status: 'PENDING' } }),
       this.getUpcomingInterviewsCount(),
       this.queueMetrics.getAllQueueMetrics(),
     ]);
@@ -166,7 +166,7 @@ export class OperationsDashboardService {
     // Check for pending applications backlog
     const oldPendingApps = await this.prisma.applications.count({
       where: {
-        status: 'NEW',
+        status: 'PENDING',
         created_at: { lt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }, // 7 days old
       },
     });

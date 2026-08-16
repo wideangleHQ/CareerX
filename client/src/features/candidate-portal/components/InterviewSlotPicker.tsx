@@ -3,9 +3,8 @@
 import React, { useState } from 'react';
 import { useAvailableSlots } from '../hooks/useAvailableSlots';
 import { cn } from '@/src/lib/utils';
-import { formatSlotTime } from '@/src/lib/slot-time';
+import { formatSlotTime, formatSlotDate } from '@/src/lib/slot-time';
 import { Calendar as CalendarIcon, Clock, AlertCircle } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
 
 interface InterviewSlotPickerProps {
   departmentId: string;
@@ -38,12 +37,15 @@ export function InterviewSlotPicker({ departmentId, value, onChange, error }: In
   const formatTime = (timeStr: string) => formatSlotTime(timeStr);
 
   const formatDate = (dateStr: string) => {
-    try {
-      const date = new Date(dateStr);
-      return format(date, 'EEE, MMM dd');
-    } catch {
-      return dateStr;
+    const full = formatSlotDate(dateStr);
+    if (!full || full === dateStr) return dateStr;
+    const parts = full.split(', ');
+    if (parts.length >= 2) {
+      const dayOfWeek = (parts[0] ?? '').slice(0, 3);
+      const monthDay = parts[1] ?? '';
+      return `${dayOfWeek}, ${monthDay}`;
     }
+    return full;
   };
 
   if (!departmentId) {

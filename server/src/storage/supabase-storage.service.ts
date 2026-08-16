@@ -1,6 +1,7 @@
 import {
   Injectable,
   InternalServerErrorException,
+  Logger,
   PayloadTooLargeException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -37,6 +38,7 @@ interface DeleteObjectParams {
 
 @Injectable()
 export class SupabaseStorageService {
+  private readonly logger = new Logger(SupabaseStorageService.name);
   private readonly supabaseUrl: string;
   private readonly serviceRoleKey: string;
 
@@ -51,7 +53,7 @@ export class SupabaseStorageService {
 
   async uploadObject(params: UploadObjectParams): Promise<UploadObjectResult> {
     if (params.body.length === 0) {
-      throw new InternalServerErrorException('Storage upload aborted: file buffer is empty');
+      throw new InternalServerErrorException('The uploaded file appears to be empty');
     }
 
     if (params.body.length > StorageConfig.maxUploadSizeBytes) {
@@ -74,17 +76,15 @@ export class SupabaseStorageService {
     const responseBody = await readResponseBody(response);
 
     if (!response.ok) {
-      throw new InternalServerErrorException(
-        `Supabase storage upload failed: ${responseBody.raw || response.statusText}`,
-      );
+      this.logger.error(`Storage upload failed: ${responseBody.raw || response.statusText}`);
+      throw new InternalServerErrorException('File upload failed');
     }
 
     const verified = await this.objectExists(params.bucket, params.path);
 
     if (!verified) {
-      throw new InternalServerErrorException(
-        `Supabase upload reported success but object was not found at ${params.bucket}/${params.path}`,
-      );
+      this.logger.error(`Upload verification failed: ${params.bucket}/${params.path}`);
+      throw new InternalServerErrorException('File upload failed');
     }
 
     return { bucket: params.bucket, path: params.path, response: responseBody.data, verified };
@@ -117,9 +117,8 @@ export class SupabaseStorageService {
     const responseBody = await readResponseBody(response);
 
     if (!response.ok) {
-      throw new InternalServerErrorException(
-        `Supabase signed URL failed: ${responseBody.raw || response.statusText}`,
-      );
+      this.logger.error(`Signed URL failed: ${responseBody.raw || response.statusText}`);
+      throw new InternalServerErrorException('Failed to generate file URL');
     }
 
     const payload = responseBody.data as { signedURL?: string; signedUrl?: string };
@@ -151,9 +150,8 @@ export class SupabaseStorageService {
 
     const responseBody = await readResponseBody(response);
     if (!response.ok) {
-      throw new InternalServerErrorException(
-        `Supabase delete failed: ${responseBody.raw || response.statusText}`,
-      );
+      this.logger.error(`Storage delete failed: ${responseBody.raw || response.statusText}`);
+      throw new InternalServerErrorException('Failed to delete file');
     }
   }
 
@@ -176,9 +174,8 @@ export class SupabaseStorageService {
 
     const responseBody = await readResponseBody(response);
     if (!response.ok) {
-      throw new InternalServerErrorException(
-        `Supabase list failed: ${responseBody.raw || response.statusText}`,
-      );
+      this.logger.error(`Storage list failed: ${responseBody.raw || response.statusText}`);
+      throw new InternalServerErrorException('Failed to verify file');
     }
 
     const objects = Array.isArray(responseBody.data) ? responseBody.data : [];
@@ -194,9 +191,10 @@ export class SupabaseStorageService {
     try {
       return await globalThis.fetch(url, { ...init, headers });
     } catch (error) {
-      throw new ServiceUnavailableException(
-        `Storage service is unavailable: ${error instanceof Error ? error.message : stringifyForLog(error)}`,
+      this.logger.error(
+        `Storage service unavailable: ${error instanceof Error ? error.message : stringifyForLog(error)}`,
       );
+      throw new ServiceUnavailableException('File storage is temporarily unavailable. Please try again later.');
     }
   }
 

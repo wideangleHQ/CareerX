@@ -119,7 +119,7 @@ export class PerformanceMetricsService {
   private async getApplicationMetrics() {
     const totalProcessed = await this.prisma.applications.count({
       where: {
-        status: { not: 'NEW' },
+        status: { not: 'PENDING' },
       },
     });
 

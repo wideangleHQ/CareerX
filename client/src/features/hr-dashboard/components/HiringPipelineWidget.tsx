@@ -7,8 +7,8 @@ import { useDashboardStats } from '../hooks/useDashboardStats';
 import type { ApplicationStatus } from '@/src/api/types';
 
 const PIPELINE_STAGES: { status: ApplicationStatus; label: string; color: string }[] = [
-  { status: 'NEW', label: 'Applied', color: 'bg-emerald-500' },
-  { status: 'SLOT_BOOKED', label: 'Interview Scheduled', color: 'bg-amber-500' },
+  { status: 'PENDING', label: 'Pending', color: 'bg-yellow-500' },
+  { status: 'ACCEPTED', label: 'Accepted', color: 'bg-emerald-500' },
   { status: 'INTERVIEWED', label: 'Interviewed', color: 'bg-purple-500' },
   { status: 'SHORTLISTED', label: 'Shortlisted', color: 'bg-cyan-500' },
   { status: 'SELECTED', label: 'Selected', color: 'bg-green-500' },

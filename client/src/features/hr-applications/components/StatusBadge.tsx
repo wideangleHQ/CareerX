@@ -11,10 +11,10 @@ interface StatusBadgeProps {
 export function StatusBadge({ status, className }: StatusBadgeProps) {
   const getBadgeStyle = () => {
     switch (status) {
-      case 'NEW':
+      case 'PENDING':
+        return 'bg-yellow-50 text-yellow-700 border-yellow-200 hover:bg-yellow-50';
+      case 'ACCEPTED':
         return 'bg-green-50 text-green-700 border-green-200 hover:bg-green-50';
-      case 'SLOT_BOOKED':
-        return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50';
       case 'INTERVIEWED':
         return 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50';
       case 'SHORTLISTED':
@@ -35,12 +35,12 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
 
   const getLabel = () => {
     switch (status) {
-      case 'NEW':
-        return 'Pending Review';
-      case 'SLOT_BOOKED':
-        return 'Slot Booked';
+      case 'PENDING':
+        return 'Pending';
+      case 'ACCEPTED':
+        return 'Accepted';
       case 'INTERVIEWED':
-        return 'Interview Scheduled';
+        return 'Interviewed';
       case 'SELECTED':
         return 'Selected';
       case 'SHORTLISTED':

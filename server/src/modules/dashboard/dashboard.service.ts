@@ -8,8 +8,8 @@ import type { CareerJwtPayload } from '../auth/interfaces/auth.interfaces';
 // payload, and adding a new enum member surfaces here instead of silently
 // dropping out of the dashboard.
 const APPLICATION_STATUSES: application_status_enum[] = [
-  'NEW',
-  'SLOT_BOOKED',
+  'PENDING',
+  'ACCEPTED',
   'INTERVIEWED',
   'SHORTLISTED',
   'SELECTED',
@@ -81,12 +81,8 @@ export class DashboardService {
       success: true,
       data: {
         totalApplications,
-        newApplications: byStatus.NEW,
-        // An interview is "scheduled" while the application sits in
-        // SLOT_BOOKED. Counting slot_assignments instead (the previous
-        // behaviour) also swept in interviews already conducted and
-        // candidates who later withdrew or were rejected.
-        interviewsScheduled: byStatus.SLOT_BOOKED,
+        newApplications: byStatus.PENDING,
+        acceptedApplications: byStatus.ACCEPTED,
         selectedCount: byStatus.SELECTED,
         offersReleased: byStatus.OFFER_RELEASED,
         joinedCount: byStatus.JOINED,

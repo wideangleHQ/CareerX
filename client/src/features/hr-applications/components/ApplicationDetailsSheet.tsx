@@ -3,12 +3,11 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { applicationsApi } from '@/src/api/applications';
-import { useUpdateApplicationStatus } from '../hooks/useUpdateApplicationStatus';
-import { StatusBadge } from './StatusBadge';
+import { StatusDropdown } from './StatusDropdown';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Loader2, Mail, Phone, FileText, Clock3, Download, ExternalLink, CalendarDays } from 'lucide-react';
-import type { ApplicationStatus, CandidateFile } from '@/src/api/types';
+import type { CandidateFile } from '@/src/api/types';
 import { formatSlotTime } from '@/src/lib/slot-time';
 import { useCandidateFiles, useFileAction } from '@/src/features/hr-candidates/hooks/useCandidateFiles';
 import { FilePreviewDialog } from '@/src/features/hr-candidates/components/FilePreviewDialog';
@@ -42,23 +41,12 @@ export function ApplicationDetailsSheet({ applicationId }: ApplicationDetailsShe
     enabled: !!applicationId,
   });
 
-  const updateStatusMutation = useUpdateApplicationStatus();
   const { files, isLoading: isLoadingFiles, isError: isFilesError } = useCandidateFiles(applicationId);
   const fileAction = useFileAction();
   const [previewFile, setPreviewFile] = React.useState<CandidateFile | null>(null);
 
   const application = appRes?.data;
   const resume = files.find((file) => file.fileType === 'RESUME') ?? null;
-
-  const handleStatusChange = (status: ApplicationStatus) => {
-    if (!application) return;
-    const reason = window.prompt('Enter transition reason/note (optional):') || undefined;
-    updateStatusMutation.mutate({
-      id: application.id,
-      status,
-      reason,
-    });
-  };
 
   if (isLoading) {
     return (
@@ -82,83 +70,15 @@ export function ApplicationDetailsSheet({ applicationId }: ApplicationDetailsShe
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-black">{application.candidate.fullName}</h1>
-            <StatusBadge status={application.status} />
+            <StatusDropdown
+              applicationId={application.id}
+              currentStatus={application.status}
+              candidateName={application.candidate.fullName}
+            />
           </div>
           <p className="text-sm text-muted-foreground mt-1">
             Application Code: <span className="font-semibold text-black">{application.applicationCode}</span>
           </p>
-        </div>
-
-        {/* Action Panel */}
-        <div className="flex flex-wrap gap-2">
-          {application.status === 'NEW' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleStatusChange('SLOT_BOOKED')}
-              className="cursor-pointer"
-            >
-              Set Booked
-            </Button>
-          )}
-          {application.status === 'SLOT_BOOKED' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleStatusChange('INTERVIEWED')}
-              className="cursor-pointer"
-            >
-              Mark Interviewed
-            </Button>
-          )}
-          {application.status === 'INTERVIEWED' && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleStatusChange('SHORTLISTED')}
-                className="cursor-pointer"
-              >
-                Shortlist
-              </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => handleStatusChange('SELECTED')}
-                className="bg-green-600 hover:bg-green-700 text-white cursor-pointer"
-              >
-                Select Candidate
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => handleStatusChange('REJECTED')}
-                className="cursor-pointer"
-              >
-                Reject Candidate
-              </Button>
-            </>
-          )}
-          {application.status === 'SHORTLISTED' && (
-            <>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => handleStatusChange('SELECTED')}
-                className="bg-green-600 hover:bg-green-700 text-white cursor-pointer"
-              >
-                Select Candidate
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => handleStatusChange('REJECTED')}
-                className="cursor-pointer"
-              >
-                Reject Candidate
-              </Button>
-            </>
-          )}
         </div>
       </div>
 

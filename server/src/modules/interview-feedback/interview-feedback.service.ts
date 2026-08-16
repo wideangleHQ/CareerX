@@ -80,7 +80,7 @@ export class InterviewFeedbackService {
           },
         });
         if (!application) throw new NotFoundException('Application not found');
-        if (!['SLOT_BOOKED', 'INTERVIEWED'].includes(application.status)) {
+        if (!['ACCEPTED', 'INTERVIEWED'].includes(application.status)) {
           throw new ConflictException('Conflict');
         }
 

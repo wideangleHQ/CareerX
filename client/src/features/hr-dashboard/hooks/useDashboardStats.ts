@@ -35,7 +35,7 @@ export function useDashboardStats() {
     isLoading,
     totalApplications: d?.totalApplications ?? 0,
     newApplications: d?.newApplications ?? 0,
-    interviewsScheduled: d?.interviewsScheduled ?? 0,
+    acceptedApplications: d?.acceptedApplications ?? 0,
     selectedCount: d?.selectedCount ?? 0,
     // Per-status tally powering the pipeline widget, so it reads from the same
     // snapshot as the KPI cards instead of issuing its own requests.
