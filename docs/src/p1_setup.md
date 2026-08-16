@@ -93,7 +93,7 @@ Runs on port 3001.
 
 | Variable | Notes |
 | --- | --- |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:3000/api/v1` |
+| `NEXT_PUBLIC_API_URL` | Origin only, `http://localhost:3000`. `next.config.mjs` rewrites `/api/v1/:path*` onto it, so a value ending in `/api/v1` produces `/api/v1/api/v1` and every call 404s |
 | `NEXT_PUBLIC_PERFORMX_LOGIN_URL` | Where to send an unauthenticated HR user |
 | `NEXT_PUBLIC_CANDIDATE_DOMAIN` | Production only, see below |
 | `NEXT_PUBLIC_HR_DOMAIN` | Production only, see below |
