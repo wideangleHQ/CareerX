@@ -12,7 +12,7 @@ server_port := "3000"
 client_port := "3001"
 
 # Required environment variables, checked by `just check-env`
-server_env_required := "DATABASE_URL REDIS_URL CAREER_JWT_SECRET PERFORMX_API_URL PERFORMX_JWT_SECRET PERFORMX_INTERNAL_API_KEY CORS_ORIGINS RESEND_API_KEY EMAIL_FROM SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_APP_URL"
+server_env_required := "DATABASE_URL DIRECT_URL REDIS_URL CAREER_JWT_SECRET PERFORMX_API_URL PERFORMX_JWT_SECRET PERFORMX_INTERNAL_API_KEY CORS_ORIGINS RESEND_API_KEY EMAIL_FROM SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY NEXT_PUBLIC_APP_URL"
 client_env_required := "NEXT_PUBLIC_API_URL NEXT_PUBLIC_PERFORMX_LOGIN_URL"
 
 # Show all recipes
@@ -209,6 +209,22 @@ routes:
         echo "### $f"
         grep -nE "@(Controller|Get|Post|Patch|Put|Delete|Permissions|UseGuards)\(" "$f" | sed 's/^ *//'
     done
+
+# Runs from the pre-commit hook. Run it yourself before a push, the hook is local only.
+# Fail if AI attribution is in a tracked file or in the recent history
+no-ai-trails:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    pat='Co-Authored-By: *Claude|Generated with \[Claude Code\]|claude\.ai/code|Claude Code|Claude Opus|🤖'
+    files=$(git grep -nIE "$pat" -- . ':!justfile' ':!CLAUDE.md' ':!docs/src/decisions.md')
+    msgs=$(git log -50 --format='%h %s%n%b' | grep -E "$pat")
+    if [ -n "$files" ] || [ -n "$msgs" ]; then
+        echo "AI attribution found. Strip it before this goes anywhere."
+        [ -n "$files" ] && echo "$files"
+        [ -n "$msgs" ] && printf 'in commit messages:\n%s\n' "$msgs"
+        exit 1
+    fi
+    echo "No AI trails."
 
 # List endpoints that have no guard on the method or the class
 public-routes:
