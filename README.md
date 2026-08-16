@@ -212,6 +212,10 @@ Scopes: `auth`, `opportunities`, `applications`, `candidates`, `interviews`,
 `offers`, `files`, `email`, `reports`, `sync`, `queues`, `client`, `schema`,
 `docs`.
 
+Anything you chose between two reasonable options gets an entry in
+`docs/src/decisions.md`, in the same commit. `just no-ai-trails` runs from the
+pre-commit hook and fails on AI attribution in files or commit messages.
+
 Conventions are in `docs/src/p1_conventions.md`. The patterns worth copying from
 this repository into PerformX, since it does not have them, are the BullMQ
 setup, the health endpoints, the correlation IDs, the circuit breaker, and the

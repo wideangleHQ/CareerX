@@ -41,7 +41,8 @@ base URL is `http://localhost:3000/api/v1`.
 
 | Variable | Required | Notes |
 | --- | --- | --- |
-| `DATABASE_URL` | yes | Supabase Postgres |
+| `DATABASE_URL` | yes | Supabase Postgres, pooled. What the running API connects with |
+| `DIRECT_URL` | yes | Same database, direct connection. What `prisma.config.ts` reads, so `prisma generate` and `db push` fail without it |
 | `REDIS_URL` | yes | Sessions and queues both die without it |
 | `CAREER_JWT_SECRET` | yes | Signs the `career_at` access token |
 | `PERFORMX_API_URL` | yes | Defaults to `https://api.ruchiperformx.in` |

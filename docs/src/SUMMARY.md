@@ -21,3 +21,7 @@
 - [Schema changes](p2_data_model.md)
 - [Embedding in PerformX](p2_performx_embedding.md)
 - [Candidate to employee handoff](p2_hr_handoff.md)
+
+---
+
+[Decision log](decisions.md)
