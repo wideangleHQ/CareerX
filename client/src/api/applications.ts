@@ -115,4 +115,11 @@ export const applicationsApi = {
     const { data } = await axiosClient.get('/api/v1/interview-feedback', { params });
     return data;
   },
+
+  exportToExcel: async (): Promise<Blob> => {
+    const { data } = await axiosClient.get('/api/v1/applications/export', {
+      responseType: 'blob',
+    });
+    return data;
+  },
 };

@@ -9,6 +9,8 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Prisma, application_status_enum } from '@prisma/client';
+import * as ExcelJS from 'exceljs';
+import type { Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -37,6 +39,18 @@ const STATUS_TRANSITIONS: Record<application_status_enum, application_status_enu
   JOINED: [],
   REJECTED: [],
   WITHDRAWN: [],
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: 'Pending',
+  ACCEPTED: 'Accepted',
+  INTERVIEWED: 'Interviewed',
+  SHORTLISTED: 'Shortlisted',
+  SELECTED: 'Selected',
+  OFFER_RELEASED: 'Offer Released',
+  JOINED: 'Joined',
+  REJECTED: 'Rejected',
+  WITHDRAWN: 'Withdrawn',
 };
 
 const ALLOWED_FILE_MIMES = new Set([
@@ -1037,5 +1051,263 @@ export class ApplicationsService {
       this.events.emit('BulkOperationCompleted', { type: 'BULK_ARCHIVE', actor: user.sub, count: summary.successful });
     }
     return summary;
+  }
+
+  async exportToExcel(query: QueryApplicationsDto, user: any, res: Response): Promise<void> {
+    try {
+      const where = this.buildWhere(query, user);
+
+      const applications = await this.prisma.applications.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        select: {
+          id: true,
+          application_code: true,
+          status: true,
+          rejection_reason: true,
+          self_description: true,
+          experience_years: true,
+          created_at: true,
+          updated_at: true,
+          candidate: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+              mobile_number: true,
+              whatsapp_number: true,
+            },
+          },
+          department: {
+            select: { id: true, name: true },
+          },
+          assigned_hr: {
+            select: { id: true, full_name: true, email: true },
+          },
+          hiring_opportunity: {
+            select: {
+              id: true,
+              public_title: true,
+              internal_position: true,
+              number_of_openings: true,
+              hiring_type: true,
+              hiring_priority: true,
+              career_level: true,
+              work_mode: true,
+              location: true,
+              interview_location: true,
+              meeting_link: true,
+            },
+          },
+          slot_assignment: {
+            select: {
+              id: true,
+              slot: {
+                select: {
+                  id: true,
+                  slot_date: true,
+                  slot_time: true,
+                  is_booked: true,
+                },
+              },
+              assigned_hr: {
+                select: { id: true, full_name: true },
+              },
+            },
+          },
+          files: {
+            select: {
+              file_type: true,
+              file_name: true,
+              mime_type: true,
+              created_at: true,
+            },
+            where: {
+              file_type: { in: ['RESUME', 'ORG_PROOF'] },
+            },
+          },
+          interview_feedback: {
+            select: {
+              rating: true,
+              notes: true,
+              hr: { select: { full_name: true } },
+              created_at: true,
+            },
+            orderBy: { created_at: 'desc' },
+            take: 1,
+          },
+          status_history: {
+            select: {
+              from_status: true,
+              to_status: true,
+              changed_by: { select: { full_name: true } },
+              created_at: true,
+            },
+            orderBy: { created_at: 'desc' },
+            take: 1,
+          },
+        },
+      });
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'CareerX';
+      workbook.created = new Date();
+
+      const worksheet = workbook.addWorksheet('Applications');
+
+      const columns: Partial<ExcelJS.Column>[] = [
+        { header: 'Application Code', key: 'applicationCode', width: 18 },
+        { header: 'Application Status', key: 'applicationStatus', width: 18 },
+        { header: 'Submitted At', key: 'submittedAt', width: 22 },
+        { header: 'Updated At', key: 'updatedAt', width: 22 },
+        { header: 'Rejection Reason', key: 'rejectionReason', width: 30 },
+        { header: 'Candidate Name', key: 'candidateName', width: 25 },
+        { header: 'Email', key: 'email', width: 30 },
+        { header: 'Mobile Number', key: 'mobileNumber', width: 18 },
+        { header: 'WhatsApp Number', key: 'whatsappNumber', width: 18 },
+        { header: 'Experience Years', key: 'experienceYears', width: 18 },
+        { header: 'Self Description', key: 'selfDescription', width: 35 },
+        { header: 'Job Title', key: 'jobTitle', width: 30 },
+        { header: 'Internal Position', key: 'internalPosition', width: 28 },
+        { header: 'Number of Openings', key: 'numberOfOpenings', width: 20 },
+        { header: 'Hiring Type', key: 'hiringType', width: 16 },
+        { header: 'Hiring Priority', key: 'hiringPriority', width: 16 },
+        { header: 'Career Level', key: 'careerLevel', width: 16 },
+        { header: 'Work Mode', key: 'workMode', width: 14 },
+        { header: 'Location', key: 'location', width: 22 },
+        { header: 'Department Name', key: 'departmentName', width: 22 },
+        { header: 'Assigned HR Name', key: 'assignedHrName', width: 25 },
+        { header: 'Assigned HR Email', key: 'assignedHrEmail', width: 30 },
+        { header: 'Interview Date', key: 'interviewDate', width: 18 },
+        { header: 'Interview Time', key: 'interviewTime', width: 16 },
+        { header: 'Interview Slot Status', key: 'interviewSlotStatus', width: 20 },
+        { header: 'Interview Location', key: 'interviewLocation', width: 25 },
+        { header: 'Meeting Link', key: 'meetingLink', width: 35 },
+        { header: 'Latest Feedback Rating', key: 'latestFeedbackRating', width: 22 },
+        { header: 'Latest Feedback Notes', key: 'latestFeedbackNotes', width: 35 },
+        { header: 'Feedback By', key: 'feedbackBy', width: 25 },
+        { header: 'Latest Status Change From', key: 'latestStatusFrom', width: 25 },
+        { header: 'Latest Status Change To', key: 'latestStatusTo', width: 25 },
+        { header: 'Status Changed By', key: 'statusChangedBy', width: 25 },
+        { header: 'Status Changed At', key: 'statusChangedAt', width: 22 },
+      ];
+
+      worksheet.columns = columns;
+
+      // Header formatting
+      const headerRow = worksheet.getRow(1);
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1F2937' },
+      };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+      headerRow.height = 24;
+
+      // Freeze header row
+      worksheet.views = [{ state: 'frozen', ySplit: 1 }];
+
+      // Auto-filter on all columns
+      worksheet.autoFilter = {
+        from: { row: 1, column: 1 },
+        to: { row: 1, column: columns.length },
+      };
+
+      const formatVal = (val: any) => (val === null || val === undefined || val === '') ? 'Null' : val;
+
+      // Add data rows
+      for (const app of applications) {
+        const latestFeedback = app.interview_feedback[0] ?? null;
+        const latestStatusChange = app.status_history[0] ?? null;
+
+        worksheet.addRow({
+          applicationCode: formatVal(app.application_code),
+          applicationStatus: formatVal(STATUS_LABELS[app.status] ?? app.status),
+          submittedAt: formatVal(app.created_at),
+          updatedAt: formatVal(app.updated_at),
+          rejectionReason: formatVal(app.rejection_reason),
+          candidateName: formatVal(app.candidate.full_name),
+          email: formatVal(app.candidate.email),
+          mobileNumber: formatVal(app.candidate.mobile_number),
+          whatsappNumber: formatVal(app.candidate.whatsapp_number),
+          experienceYears: formatVal(app.experience_years),
+          selfDescription: formatVal(app.self_description),
+          jobTitle: formatVal(app.hiring_opportunity?.public_title),
+          internalPosition: formatVal(app.hiring_opportunity?.internal_position),
+          numberOfOpenings: formatVal(app.hiring_opportunity?.number_of_openings),
+          hiringType: formatVal(app.hiring_opportunity?.hiring_type),
+          hiringPriority: formatVal(app.hiring_opportunity?.hiring_priority),
+          careerLevel: formatVal(app.hiring_opportunity?.career_level),
+          workMode: formatVal(app.hiring_opportunity?.work_mode),
+          location: formatVal(app.hiring_opportunity?.location),
+          departmentName: formatVal(app.department.name),
+          assignedHrName: formatVal(app.assigned_hr?.full_name ?? 'Unassigned'),
+          assignedHrEmail: formatVal(app.assigned_hr?.email),
+          interviewDate: formatVal(app.slot_assignment?.slot?.slot_date),
+          interviewTime: formatVal(app.slot_assignment?.slot?.slot_time),
+          interviewSlotStatus: formatVal(app.slot_assignment?.slot ? (app.slot_assignment.slot.is_booked ? 'Booked' : 'Available') : null),
+          interviewLocation: formatVal(app.hiring_opportunity?.interview_location),
+          meetingLink: formatVal(app.hiring_opportunity?.meeting_link),
+          latestFeedbackRating: formatVal(latestFeedback?.rating),
+          latestFeedbackNotes: formatVal(latestFeedback?.notes),
+          feedbackBy: formatVal(latestFeedback?.hr?.full_name),
+          latestStatusFrom: formatVal(latestStatusChange?.from_status ? (STATUS_LABELS[latestStatusChange.from_status] ?? latestStatusChange.from_status) : null),
+          latestStatusTo: formatVal(latestStatusChange ? (STATUS_LABELS[latestStatusChange.to_status] ?? latestStatusChange.to_status) : null),
+          statusChangedBy: formatVal(latestStatusChange?.changed_by?.full_name),
+          statusChangedAt: formatVal(latestStatusChange?.created_at),
+        });
+      }
+
+      // Format date columns
+      const dateColumnKeys = ['submittedAt', 'updatedAt', 'statusChangedAt'];
+      for (const key of dateColumnKeys) {
+        const col = worksheet.getColumn(key);
+        col.numFmt = 'yyyy-mm-dd hh:mm';
+      }
+      const dateOnlyColumnKeys = ['interviewDate'];
+      for (const key of dateOnlyColumnKeys) {
+        const col = worksheet.getColumn(key);
+        col.numFmt = 'yyyy-mm-dd';
+      }
+      const timeOnlyColumnKeys = ['interviewTime'];
+      for (const key of timeOnlyColumnKeys) {
+        const col = worksheet.getColumn(key);
+        col.numFmt = 'hh:mm';
+      }
+
+      // Generate filename with IST timestamp
+      const now = new Date();
+      const istString = now.toLocaleString('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).replace(/, /, '_').replace(/:/g, '-');
+      const fileName = `CareerX_Applications_${istString}.xlsx`;
+
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+      await workbook.xlsx.write(res);
+      res.end();
+    } catch (error) {
+      this.logger.error(
+        `Export applications failed: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: 'Unable to export applications. Please try again.',
+        });
+      }
+    }
   }
 }

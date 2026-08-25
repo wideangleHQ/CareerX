@@ -1,14 +1,15 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import axiosClient from '@/src/api/client';
 import { applicationsApi } from '@/src/api/applications';
 import { ApplicationFilters } from '@/src/features/hr-applications/components/ApplicationFilters';
 import { ApplicationTable } from '@/src/features/hr-applications/components/ApplicationTable';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ListFilter, Users, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ListFilter, Users, User, Download, Loader2 } from 'lucide-react';
 import type { ApplicationScope, ApplicationStatus, QueryApplicationsParams } from '@/src/api/types';
+import { toast } from 'sonner';
 
 const STATUS_TABS: { label: string; value: ApplicationStatus | 'ALL' }[] = [
   { label: 'All', value: 'ALL' },
@@ -39,6 +40,34 @@ export default function ApplicationsPage() {
     setCursorHistory([undefined]);
     setCurrentPage(1);
   }, []);
+
+  const exportMutation = useMutation({
+    mutationFn: () => applicationsApi.exportToExcel(),
+    onSuccess: (blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const now = new Date();
+      const dateStr = now.toLocaleString('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      }).replace(/, /, '_').replace(/:/g, '-');
+      link.setAttribute('download', `CareerX_Applications_${dateStr}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success('Applications exported successfully.');
+    },
+    onError: () => {
+      toast.error('Unable to export applications. Please try again.');
+    },
+  });
 
   const { data: statsData } = useQuery({
     queryKey: ['dashboard', 'stats'],
@@ -111,13 +140,32 @@ export default function ApplicationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold text-black flex items-center gap-2">
-          <ListFilter className="h-6 w-6 text-neutral-500" /> Candidate Applications
-        </h1>
-        <p className="text-xs text-muted-foreground">
-          View, filter, evaluate and assign target candidate applications.
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-bold text-black flex items-center gap-2">
+            <ListFilter className="h-6 w-6 text-neutral-500" /> Candidate Applications
+          </h1>
+          <p className="text-xs text-muted-foreground">
+            View, filter, evaluate and assign target candidate applications.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full sm:w-auto cursor-pointer font-semibold"
+          disabled={exportMutation.isPending}
+          onClick={() => exportMutation.mutate()}
+        >
+          {exportMutation.isPending ? (
+            <>
+              <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> Exporting...
+            </>
+          ) : (
+            <>
+              <Download className="mr-1.5 h-4 w-4" /> Export Applications
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Scope tabs */}

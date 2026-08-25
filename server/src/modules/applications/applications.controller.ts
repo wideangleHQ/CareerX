@@ -8,6 +8,7 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
@@ -29,6 +30,7 @@ import { parseAssignHrDto } from './dto/assign-hr.dto';
 import { parseCreateApplicationDto } from './dto/create-application.dto';
 import { parseQueryApplicationsDto } from './dto/query-applications.dto';
 import { parseUpdateStatusDto } from './dto/update-status.dto';
+import type { Response } from 'express';
 
 @Controller('applications')
 export class ApplicationsController {
@@ -63,6 +65,25 @@ export class ApplicationsController {
     @CurrentUser() user: CareerJwtPayload
   ): Promise<ApplicationListResponseDto> {
     return this.applicationsService.findAll(parseQueryApplicationsDto(query), user);
+  }
+
+  @Get('export')
+  @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CAREER_VIEW')
+  async exportToExcel(
+    @Query() query: Record<string, unknown>,
+    @CurrentUser() user: CareerJwtPayload,
+    @Res() res: Response,
+  ): Promise<void> {
+    // Build a query DTO with defaults suitable for export (no pagination, scope=all)
+    const exportQuery = parseQueryApplicationsDto({
+      ...query,
+      scope: 'all',
+      limit: '100',       // limit is overridden — buildWhere ignores it, findMany has no take
+      sortBy: 'createdAt',
+      sortOrder: 'desc',
+    });
+    await this.applicationsService.exportToExcel(exportQuery, user, res);
   }
 
   @Post('bulk/status')
