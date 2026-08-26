@@ -73,7 +73,7 @@ export class AuthService {
       if (!(await this.redis.ping())) {
         throw new ServiceUnavailableException('External Dependency Unavailable');
       }
-      throw new UnauthorizedException('Unauthorized');
+      throw new UnauthorizedException({ message: 'CareerX Authentication cannot be completed. Please try again.', code: 'AUTH_REFRESH_MISSING' });
     }
 
     let record: RefreshTokenRecord;
@@ -84,7 +84,7 @@ export class AuthService {
       }
     } catch {
       await this.redis.del(key);
-      throw new UnauthorizedException('Unauthorized');
+      throw new UnauthorizedException({ message: 'CareerX Authentication cannot be completed. Please try again.', code: 'AUTH_REFRESH_INVALID' });
     }
 
     // Rotate with a reuse-grace window instead of an immediate delete. Tabs

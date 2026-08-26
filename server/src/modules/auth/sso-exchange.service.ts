@@ -69,7 +69,10 @@ export class SSOExchangeService {
       if (token.length > 0) return token;
     }
 
-    throw new UnauthorizedException('Unauthorized');
+    throw new UnauthorizedException({
+      message: 'CareerX Authentication cannot be completed. Please try again.',
+      code: 'AUTH_TOKEN_MISSING'
+    });
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -91,10 +94,10 @@ export class SSOExchangeService {
     if (!secret || secret.trim().length === 0) return;
 
     const parts = token.split('.');
-    if (parts.length !== 3) throw new UnauthorizedException('Unauthorized');
+    if (parts.length !== 3) throw new UnauthorizedException({ message: 'CareerX Authentication cannot be completed. Please try again.', code: 'AUTH_TOKEN_INVALID' });
 
     const [encodedHeader, encodedBody, signature] = parts;
-    if (!signature) throw new UnauthorizedException('Unauthorized');
+    if (!signature) throw new UnauthorizedException({ message: 'CareerX Authentication cannot be completed. Please try again.', code: 'AUTH_TOKEN_INVALID' });
 
     let header: { alg?: string };
     try {
@@ -103,7 +106,7 @@ export class SSOExchangeService {
       throw new UnauthorizedException('Unauthorized');
     }
 
-    if (header.alg !== 'HS256') throw new UnauthorizedException('Unauthorized');
+    if (header.alg !== 'HS256') throw new UnauthorizedException({ message: 'CareerX Authentication cannot be completed. Please try again.', code: 'AUTH_TOKEN_INVALID' });
 
     const expected = createHmac('sha256', secret)
       .update(`${encodedHeader}.${encodedBody}`)
@@ -116,7 +119,7 @@ export class SSOExchangeService {
       receivedBuf.length !== expectedBuf.length ||
       !timingSafeEqual(receivedBuf, expectedBuf)
     ) {
-      throw new UnauthorizedException('Unauthorized');
+      throw new UnauthorizedException({ message: 'CareerX Authentication cannot be completed. Please try again.', code: 'AUTH_TOKEN_INVALID' });
     }
 
     let claims: PerformxJwtClaims;
@@ -128,7 +131,7 @@ export class SSOExchangeService {
 
     const now = Math.floor(Date.now() / 1000);
     if (!claims.exp || claims.exp <= now) {
-      throw new UnauthorizedException('Unauthorized');
+      throw new UnauthorizedException({ message: 'CareerX Authentication cannot be completed. Please try again.', code: 'AUTH_TOKEN_EXPIRED' });
     }
   }
 
@@ -164,7 +167,7 @@ export class SSOExchangeService {
   validateHRResult(permissions: string[], canAccessCareerHR?: boolean): void {
     if (canAccessCareerHR) return;
     if (permissions.length === 0) {
-      throw new ForbiddenException('Forbidden');
+      throw new ForbiddenException({ message: 'CareerX Authentication cannot be completed. Please try again.', code: 'AUTH_FORBIDDEN' });
     }
   }
 }

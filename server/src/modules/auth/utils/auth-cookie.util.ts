@@ -18,10 +18,11 @@ export function readCookie(header: string | undefined, name: string): string | n
 }
 
 export function setAuthCookies(response: Response, accessToken: string, refreshToken: string): void {
+  const sameSiteValue = secureCookie ? 'none' : 'lax';
   response.cookie(AUTH_COOKIES.access, accessToken, {
     httpOnly: true,
     secure: secureCookie,
-    sameSite: 'lax',
+    sameSite: sameSiteValue,
     domain: cookieDomain,
     path: '/',
     maxAge: AUTH_TTL_SECONDS.access * 1000,
@@ -29,7 +30,7 @@ export function setAuthCookies(response: Response, accessToken: string, refreshT
   response.cookie(AUTH_COOKIES.refresh, refreshToken, {
     httpOnly: true,
     secure: secureCookie,
-    sameSite: 'lax',
+    sameSite: sameSiteValue,
     domain: cookieDomain,
     path: '/',
     maxAge: AUTH_TTL_SECONDS.refresh * 1000,
@@ -37,10 +38,11 @@ export function setAuthCookies(response: Response, accessToken: string, refreshT
 }
 
 export function clearAuthCookies(response: Response): void {
+  const sameSiteValue = secureCookie ? 'none' : 'lax';
   const options = {
     httpOnly: true,
     secure: secureCookie,
-    sameSite: 'lax' as const,
+    sameSite: sameSiteValue as any,
     domain: cookieDomain,
     path: '/',
   };

@@ -2,8 +2,9 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/src/context/AuthContext';
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { AppConfig } from '@/src/config/app';
+import Link from 'next/link';
 import {
   LayoutDashboard,
   Users,
@@ -51,7 +52,7 @@ export default function HRLayout({ children }: { children: React.ReactNode }) {
           <p className="text-xs text-red-500 mt-1">Auth error: {error}</p>
         )}
         <Button
-          onClick={() => (window.location.href = 'http://localhost:3000/auth/login')}
+          onClick={() => (window.location.href = AppConfig.performxLoginUrl)}
           className="mt-4 cursor-pointer font-semibold"
         >
           Login to PerformX
