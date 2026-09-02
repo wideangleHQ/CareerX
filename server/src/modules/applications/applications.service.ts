@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   HttpException,
   InternalServerErrorException,
@@ -113,7 +114,13 @@ const applicationListSelect = {
     select: { id: true, full_name: true, email: true },
   },
   hiring_opportunity: {
-    select: { id: true, public_title: true, internal_position: true, hiring_priority: true },
+    select: {
+      id: true,
+      public_title: true,
+      internal_position: true,
+      hiring_priority: true,
+      hiring_manager: { select: { id: true, full_name: true } },
+    },
   },
   slot_assignment: {
     select: {
@@ -151,6 +158,15 @@ const applicationDetailSelect = {
       assigned_hr: { select: { id: true, full_name: true, email: true } },
     },
   },
+  hiring_opportunity: {
+    select: {
+      id: true,
+      public_title: true,
+      internal_position: true,
+      hiring_priority: true,
+      hiring_manager: { select: { id: true, full_name: true } },
+    },
+  },
 } satisfies Prisma.applicationsSelect;
 
 @Injectable()
@@ -182,7 +198,7 @@ export class ApplicationsService {
 
         const opportunity = await tx.hiring_opportunities.findFirst({
           where: opportunityWhere,
-          select: { id: true, department_id: true, application_deadline: true, resume_required: true }
+          select: { id: true, department_id: true, application_deadline: true, resume_required: true, hiring_manager_id: true }
         });
         if (!opportunity) candidateError(ApplicationErrorCode.OPPORTUNITY_UNAVAILABLE);
 
@@ -238,7 +254,7 @@ export class ApplicationsService {
             candidate_id: candidate.id,
             department_id: departmentId,
             hiring_opportunity_id: opportunity.id,
-            assigned_hr_id: null,
+            assigned_hr_id: opportunity.hiring_manager_id ?? null,
             self_description: dto.selfDescription,
             experience_years: dto.experienceYears,
             previous_org_proof_url: null,
@@ -521,6 +537,127 @@ export class ApplicationsService {
     }
   }
 
+  /** Returns active employees with CAREER_INTERVIEW permission. */
+  async getEligibleInterviewers(): Promise<{ id: string; fullName: string; email: string; departmentId: string | null }[]> {
+    const roles = await this.prisma.hr_role_permissions.findMany({
+      where: { permission: 'CAREER_INTERVIEW' },
+      select: { performx_role: true },
+    });
+    const allowedRoles = roles.map((r) => r.performx_role);
+    if (allowedRoles.length === 0) return [];
+
+    const employees = await this.prisma.hr_employees.findMany({
+      where: { is_active: true, performx_role: { in: allowedRoles } },
+      select: { id: true, full_name: true, email: true, department_id: true },
+      orderBy: { full_name: 'asc' },
+    });
+
+    const seen = new Set<string>();
+    return employees.reduce<{ id: string; fullName: string; email: string; departmentId: string | null }[]>((acc, e) => {
+      const key = e.full_name.trim().toLowerCase();
+      if (seen.has(key)) return acc;
+      seen.add(key);
+      acc.push({ id: e.id, fullName: e.full_name.trim(), email: e.email, departmentId: e.department_id });
+      return acc;
+    }, []);
+  }
+
+  /**
+   * Reassigns the interview for an application to a different eligible employee.
+   * Only the position owner (hiring_opportunities.hiring_manager_id) may reassign;
+   * throws ForbiddenException for any other requester, regardless of their permissions.
+   */
+  async reassignInterviewer(
+    applicationId: string,
+    targetHrId: string,
+    actor: { sub: string; ip?: string | undefined },
+  ): Promise<ApplicationDetailDto> {
+    let previousHrId: string | null = null;
+    let reassigned = false;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const application = await tx.applications.findFirst({
+        where: { id: applicationId, deleted_at: null },
+        select: {
+          id: true,
+          slot_assignment: { select: { id: true, assigned_hr_id: true, slot_id: true } },
+          assigned_hr_id: true,
+          hiring_opportunity: { select: { hiring_manager_id: true } },
+        },
+      });
+      if (!application) throw new NotFoundException('Application not found');
+
+      const positionOwnerId = application.hiring_opportunity?.hiring_manager_id ?? null;
+      if (!positionOwnerId || positionOwnerId !== actor.sub) {
+        throw new ForbiddenException('Only the position owner can reassign the interviewer for this application');
+      }
+
+      if (!application.slot_assignment) throw new ConflictException('No interview scheduled for this application');
+
+      const roles = await tx.hr_role_permissions.findMany({
+        where: { permission: 'CAREER_INTERVIEW' },
+        select: { performx_role: true },
+      });
+      const allowedRoles = roles.map((r) => r.performx_role);
+
+      const targetHr = await tx.hr_employees.findFirst({
+        where: { id: targetHrId, is_active: true, performx_role: { in: allowedRoles } },
+        select: { id: true, full_name: true },
+      });
+      if (!targetHr) throw new NotFoundException('Target employee is not eligible for interviews');
+
+      previousHrId = application.slot_assignment.assigned_hr_id;
+      if (previousHrId === targetHrId) {
+        const unchanged = await tx.applications.findFirst({
+          where: { id: applicationId },
+          select: applicationDetailSelect,
+        });
+        return this.toDetail(unchanged!);
+      }
+
+      await tx.slot_assignments.update({
+        where: { id: application.slot_assignment.id },
+        data: { assigned_hr_id: targetHrId },
+      });
+
+      await tx.applications.update({
+        where: { id: applicationId },
+        data: { assigned_hr_id: targetHrId, updated_at: new Date() },
+      });
+
+      await tx.audit_logs.create({
+        data: {
+          actor_id: actor.sub,
+          action: 'INTERVIEW_REASSIGNED',
+          entity: 'slot_assignments',
+          entity_id: application.slot_assignment.id,
+          old_value: JSON.stringify({ assigned_hr_id: previousHrId }),
+          new_value: JSON.stringify({ assigned_hr_id: targetHrId }),
+          ip_address: actor.ip ?? null,
+        },
+      });
+
+      reassigned = true;
+
+      const updated = await tx.applications.findFirst({
+        where: { id: applicationId },
+        select: applicationDetailSelect,
+      });
+
+      return this.toDetail(updated!);
+    }, { maxWait: 10000, timeout: 15000 });
+
+    if (reassigned) {
+      this.events.emit('InterviewReassigned', {
+        applicationId,
+        previousHrId,
+        newHrId: targetHrId,
+      });
+    }
+
+    return result;
+  }
+
   async remove(id: string): Promise<ApplicationDetailDto> {
     try {
       await this.findActiveApplication(id);
@@ -669,6 +806,12 @@ export class ApplicationsService {
             email: application.assigned_hr.email,
           }
         : null,
+      positionOwner: application.hiring_opportunity?.hiring_manager
+        ? {
+            id: application.hiring_opportunity.hiring_manager.id,
+            fullName: application.hiring_opportunity.hiring_manager.full_name,
+          }
+        : null,
       opportunity: application.hiring_opportunity
         ? {
             id: application.hiring_opportunity.id,
@@ -680,9 +823,17 @@ export class ApplicationsService {
       interviewStatus: application.slot_assignment ? 'SCHEDULED' : 'NOT_SCHEDULED',
       interviewDate: application.slot_assignment?.slot.slot_date ?? null,
       interviewTime: application.slot_assignment?.slot.slot_time ?? null,
+      // Slot's interviewer takes priority once scheduled (reassignment updates
+      // both slot_assignment and assigned_hr in lockstep, so they agree). Before
+      // a slot exists, the assigned HR — the position owner by default — is
+      // still the interviewer-to-be, so fall back to it rather than showing
+      // nothing. Never invents a date/time: those stay null until a real slot
+      // is selected.
       interviewer: application.slot_assignment?.assigned_hr
         ? { id: application.slot_assignment.assigned_hr.id, fullName: application.slot_assignment.assigned_hr.full_name }
-        : null,
+        : application.assigned_hr
+          ? { id: application.assigned_hr.id, fullName: application.assigned_hr.full_name }
+          : null,
       resumeFile: application.files[0]
         ? {
             id: application.files[0].id,

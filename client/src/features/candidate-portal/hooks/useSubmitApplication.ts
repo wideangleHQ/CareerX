@@ -39,9 +39,8 @@ export function useSubmitApplication() {
             };
           }
         } catch {
-          // Slot booking requires ACCEPTED status (post-screening).
-          // Application is submitted successfully; HR will assign a slot
-          // after reviewing.
+          // Slot may have been taken between selection and submission.
+          // Application is submitted; HR can assign a slot later.
         }
       }
 

@@ -43,9 +43,23 @@ export class EmployeeSyncService {
   }
 
   async refreshAndUpsert(): Promise<{ synced: number }> {
+    const t0 = Date.now();
+    this.logger.log('Employee sync started');
+
     const employees = await this.fetchAndCache();
-    await this.bulkUpsert(employees);
-    return { synced: employees.length };
+    const fetchMs = Date.now() - t0;
+    this.logger.log(`PerformX fetch: ${employees.length} employees in ${fetchMs}ms`);
+
+    const t1 = Date.now();
+    const { synced, failed } = await this.bulkUpsert(employees);
+    const writeMs = Date.now() - t1;
+    const totalMs = Date.now() - t0;
+
+    this.logger.log(
+      `Employee sync complete: ${synced} synced, ${failed} failed — fetch ${fetchMs}ms, db ${writeMs}ms, total ${totalMs}ms`,
+    );
+
+    return { synced };
   }
 
   async upsertSingle(employee: PerformxEmployeeItem): Promise<void> {
@@ -71,14 +85,18 @@ export class EmployeeSyncService {
     });
   }
 
-  private async bulkUpsert(employees: PerformxEmployeeItem[]): Promise<void> {
-    if (employees.length === 0) return;
+  private async bulkUpsert(
+    employees: PerformxEmployeeItem[],
+  ): Promise<{ synced: number; failed: number }> {
+    if (employees.length === 0) return { synced: 0, failed: 0 };
 
     const now = new Date();
+    let synced = 0;
+    let failed = 0;
 
-    await this.prisma.$transaction(
-      employees.map((emp) =>
-        this.prisma.hr_employees.upsert({
+    for (const emp of employees) {
+      try {
+        await this.prisma.hr_employees.upsert({
           where: { id: emp.id },
           create: {
             id: emp.id,
@@ -97,11 +115,17 @@ export class EmployeeSyncService {
             is_active: emp.isActive,
             synced_at: now,
           },
-        }),
-      ),
-    );
+        });
+        synced++;
+      } catch (error) {
+        failed++;
+        this.logger.warn(
+          `Employee upsert failed [id=${emp.id}]: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
 
-    this.logger.log(`Bulk upserted ${employees.length} employees to hr_employees`);
+    return { synced, failed };
   }
 
   private async fetchAndCache(): Promise<PerformxEmployeeItem[]> {

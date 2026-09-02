@@ -8,11 +8,13 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   Res,
   UploadedFiles,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
@@ -84,6 +86,14 @@ export class ApplicationsController {
       sortOrder: 'desc',
     });
     await this.applicationsService.exportToExcel(exportQuery, user, res);
+  }
+
+  @Get('eligible-interviewers')
+  @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CAREER_INTERVIEW')
+  async getEligibleInterviewers() {
+    const data = await this.applicationsService.getEligibleInterviewers();
+    return { success: true, data };
   }
 
   @Post('bulk/status')
@@ -167,6 +177,23 @@ export class ApplicationsController {
   ): Promise<ApplicationMutationResponseDto> {
     const data = await this.applicationsService.assignHr(id, parseAssignHrDto(body));
     return { success: true, message: 'Application assigned', data };
+  }
+
+  @Patch(':id/reassign-interviewer')
+  @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('CAREER_VIEW')
+  async reassignInterviewer(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() body: { hrId: string },
+    @CurrentUser() user: CareerJwtPayload,
+    @Req() req: Request,
+  ): Promise<ApplicationMutationResponseDto> {
+    const data = await this.applicationsService.reassignInterviewer(
+      id,
+      body.hrId,
+      { sub: user.sub, ip: req.ip },
+    );
+    return { success: true, message: 'Interviewer reassigned', data };
   }
 
   @Delete(':id')

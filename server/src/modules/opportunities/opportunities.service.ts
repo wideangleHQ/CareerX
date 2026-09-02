@@ -13,7 +13,7 @@ export class OpportunitiesService {
     private readonly redis: RedisService,
   ) { }
 
-  async create(dto: any) {
+  async create(dto: any, user?: { sub: string }) {
     try {
       // Validate required fields
       const requiredFields = ['internal_position', 'department_id', 'public_title', 'location'];
@@ -50,8 +50,8 @@ export class OpportunitiesService {
         benefits: dto.benefits ?? null,
         career_growth: dto.career_growth ?? null,
 
-        // Optional UUID fields
-        hiring_manager_id: dto.hiring_manager_id || null,
+        // Position creator is the hiring manager (position owner)
+        hiring_manager_id: user?.sub ?? dto.hiring_manager_id ?? null,
         reporting_manager_id: dto.reporting_manager_id || null,
 
         // Optional numeric fields

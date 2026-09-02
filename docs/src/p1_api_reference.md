@@ -63,6 +63,53 @@ you edit it.
 | GET | `/applications/:id/offer` | guarded |
 | POST | `/applications/:id/offer` | guarded |
 | PATCH | `/applications/:id/offer/status` | guarded |
+| GET | `/applications/eligible-interviewers` | `CAREER_INTERVIEW` |
+| PATCH | `/applications/:id/reassign-interviewer` | `CAREER_VIEW`, requester must be the position owner |
+
+### Position Owner and Interview Reassignment
+
+The user who creates a position becomes its **Position Owner**
+(`hiring_opportunities.hiring_manager_id`). When a candidate applies, the
+position owner is auto-assigned as the default interviewer
+(`applications.assigned_hr_id`).
+
+`GET /applications/eligible-interviewers` returns active employees with the
+`CAREER_INTERVIEW` permission. The response is suitable for populating the
+interviewer reassignment dropdown.
+
+`PATCH /applications/:id/reassign-interviewer` accepts `{ hrId: "<uuid>" }` and
+atomically updates both `slot_assignments.assigned_hr_id` and
+`applications.assigned_hr_id`. The target employee must be active with
+`CAREER_INTERVIEW` permission. An audit log entry is created recording the
+previous and new interviewer. **This endpoint requires an existing
+`slot_assignment`** — it changes who runs an already-scheduled interview, not
+who the application is assigned to before one exists; calling it on an
+application with no scheduled slot returns a `409`. Before a slot exists, the
+assigned HR (the position owner, by default) is displayed as the
+interviewer-to-be but is not reassignable through this endpoint.
+
+The `interviewer` field returned by the applications endpoints follows the
+same rule: it resolves to the slot's `assigned_hr` once a slot is scheduled,
+and falls back to `applications.assigned_hr` before one exists, so the UI
+always has someone to show instead of a blank "unassigned" state. It is only
+`null` when neither is set. `interviewDate` / `interviewTime` are never
+backfilled — they stay `null` until a real `slot_assignment` exists.
+
+**Only the position owner may call this endpoint.** The `CAREER_VIEW`
+permission on the route is the baseline "has CareerX access" check; the actual
+gate is `requester.sub === hiring_opportunity.hiring_manager_id`, enforced in
+`ApplicationsService.reassignInterviewer`. Any other authenticated user —
+including one holding `CAREER_INTERVIEW` or `CAREER_ADMIN` — gets a `403` with
+no application data leaked. This is deliberately not permission-based: holding
+`CAREER_INTERVIEW` makes an employee eligible to *be assigned as* an
+interviewer, not eligible to *reassign* one. The frontend mirrors this by
+disabling the interviewer dropdown for anyone who isn't the position owner,
+but that is a UX convenience only — the server never trusts it.
+
+Reassignment never changes `hiring_opportunities.hiring_manager_id` (the
+position owner). On successful reassignment an `InterviewReassigned` event is
+emitted, which sends an in-app notification to both the previous interviewer
+("assignment removed") and the new interviewer ("assignment received").
 
 Offers are stored inside `hr_notes`, not in their own table. See
 [The hiring pipeline](p1_hiring_pipeline.md#offers).

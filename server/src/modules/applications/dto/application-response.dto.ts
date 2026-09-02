@@ -7,10 +7,14 @@ export interface ApplicationListItemDto {
   candidate: { id: string; fullName: string; email: string; mobileNumber: string };
   department: { id: string; name: string };
   assignedHr: { id: string; fullName: string; email: string } | null;
+  positionOwner: { id: string; fullName: string } | null;
   opportunity: { id: string; title: string; internalPosition: string; priority: string } | null;
   interviewStatus: 'NOT_SCHEDULED' | 'SCHEDULED' | 'FEEDBACK_SUBMITTED';
   interviewDate: Date | null;
   interviewTime: Date | null;
+  // The slot's interviewer once a slot is scheduled; otherwise the assigned HR
+  // (the position owner by default) as the interviewer-to-be. Null only when
+  // neither is set. interviewDate/interviewTime stay null until a real slot exists.
   interviewer: { id: string; fullName: string } | null;
   resumeFile: { id: string; fileName: string; mimeType: string | null } | null;
   createdAt: Date;

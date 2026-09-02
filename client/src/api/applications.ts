@@ -122,4 +122,23 @@ export const applicationsApi = {
     });
     return data;
   },
+
+  getEligibleInterviewers: async (): Promise<{
+    success: boolean;
+    data: Array<{ id: string; fullName: string; email: string; departmentId: string | null }>;
+  }> => {
+    const { data } = await axiosClient.get('/api/v1/applications/eligible-interviewers');
+    return data;
+  },
+
+  reassignInterviewer: async (
+    applicationId: string,
+    hrId: string,
+  ): Promise<{ success: boolean; data: Application }> => {
+    const { data } = await axiosClient.patch(
+      `/api/v1/applications/${applicationId}/reassign-interviewer`,
+      { hrId },
+    );
+    return data;
+  },
 };

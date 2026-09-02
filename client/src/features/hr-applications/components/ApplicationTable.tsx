@@ -13,6 +13,7 @@ import { User, Eye, Mail, Phone, ExternalLink, X, FileText, Download } from 'luc
 import { useFileAction } from '@/src/features/hr-candidates/hooks/useCandidateFiles';
 import { FilePreviewDialog } from '@/src/features/hr-candidates/components/FilePreviewDialog';
 import { formatSlotTime } from '@/src/lib/slot-time';
+import { InterviewerDropdown } from './InterviewerDropdown';
 import type { Application } from '@/src/api/types';
 
 interface ApplicationTableProps {
@@ -88,13 +89,26 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
                 </div>
                 <p className="text-xs text-neutral-500 mt-0.5 truncate">{app.opportunity?.title || 'No position'}</p>
                 <p className="text-xs text-neutral-400 mt-0.5">{app.department.name} &middot; {app.applicationCode}</p>
-                <div className="flex items-center gap-3 mt-2 text-[11px] text-neutral-500">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-[11px] text-neutral-500">
                   <span>Applied {new Date(app.createdAt).toLocaleDateString()}</span>
-                  {app.assignedHr && <span>&middot; {app.assignedHr.fullName}</span>}
+                  {app.positionOwner && <span>&middot; Owner: {app.positionOwner.fullName}</span>}
+                  {app.assignedHr && <span>&middot; HR: {app.assignedHr.fullName}</span>}
                   {app.interviewDate && (
                     <span>&middot; Interview {new Date(app.interviewDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} {app.interviewTime ? formatSlotTime(app.interviewTime) : ''}</span>
                   )}
                 </div>
+                {app.interviewer && (
+                  <div className="mt-2">
+                    <InterviewerDropdown
+                      applicationId={app.id}
+                      currentInterviewerId={app.interviewer.id}
+                      currentInterviewerName={app.interviewer.fullName}
+                      positionOwnerId={app.positionOwner?.id ?? null}
+                      hasScheduledSlot={app.interviewStatus === 'SCHEDULED'}
+                      compact
+                    />
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <Button
@@ -120,7 +134,9 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
           <TableHead>Candidate</TableHead>
           <TableHead>Position</TableHead>
           <TableHead>Department</TableHead>
+          <TableHead>Position Owner</TableHead>
           <TableHead>Assigned HR</TableHead>
+          <TableHead>Interviewer</TableHead>
           <TableHead>Interview Date</TableHead>
           <TableHead>Interview Time</TableHead>
           <TableHead>Applied Date</TableHead>
@@ -191,12 +207,35 @@ export function ApplicationTable({ applications, isLoading }: ApplicationTablePr
             </TableCell>
             <TableCell>{app.department.name}</TableCell>
             <TableCell>
+              {app.positionOwner ? (
+                <span className="text-xs text-neutral-800 font-medium">
+                  {app.positionOwner.fullName}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground italic">Not set</span>
+              )}
+            </TableCell>
+            <TableCell>
               {app.assignedHr ? (
                 <span className="text-xs text-neutral-800 font-medium">
                   {app.assignedHr.fullName}
                 </span>
               ) : (
                 <span className="text-xs text-muted-foreground italic">Unassigned</span>
+              )}
+            </TableCell>
+            <TableCell>
+              {app.interviewer ? (
+                <InterviewerDropdown
+                  applicationId={app.id}
+                  currentInterviewerId={app.interviewer.id}
+                  currentInterviewerName={app.interviewer.fullName}
+                  positionOwnerId={app.positionOwner?.id ?? null}
+                  hasScheduledSlot={app.interviewStatus === 'SCHEDULED'}
+                  compact
+                />
+              ) : (
+                <span className="text-xs text-muted-foreground italic">Not Assigned</span>
               )}
             </TableCell>
             <TableCell className="text-xs text-neutral-600">

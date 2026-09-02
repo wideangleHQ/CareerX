@@ -68,6 +68,13 @@ Internal, visible only to HR: `internal_position`, `department_id`,
 `confidentiality_level`, `hiring_manager_id`, `reporting_manager_id`,
 `internal_notes`.
 
+`hiring_manager_id` is the **Position Owner** — the authenticated user who
+created the position. When a candidate applies, the position owner is
+auto-assigned as the default interviewer (`applications.assigned_hr_id`).
+Reassigning an interviewer later never changes `hiring_manager_id`, and only
+the position owner is authorized to perform that reassignment — see
+[Position Owner and Interview Reassignment](p1_api_reference.md#position-owner-and-interview-reassignment).
+
 Public, visible to candidates: `public_title`, `career_level`, `work_mode`,
 `location`, `min_experience_years`, `max_experience_years`,
 `educational_qualification`, `min_salary`, `max_salary`,

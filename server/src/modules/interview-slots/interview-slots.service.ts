@@ -232,7 +232,7 @@ export class InterviewSlotsService {
           select: { id: true, department_id: true, status: true, application_code: true, slot_assignment: { select: { id: true } } },
         });
         if (!application) throw new NotFoundException('Application not found');
-        if (application.status !== 'ACCEPTED' || application.slot_assignment) {
+        if (!['PENDING', 'ACCEPTED'].includes(application.status) || application.slot_assignment) {
           throw new ConflictException('Conflict: Application is already processed or booked');
         }
         if (slot.department_id && slot.department_id !== application.department_id) {
@@ -263,8 +263,8 @@ export class InterviewSlotsService {
             updated_at: new Date(),
             status_history: {
               create: {
-                from_status: 'ACCEPTED',
-                to_status: 'ACCEPTED',
+                from_status: application.status,
+                to_status: application.status,
                 changed_by_id: null,
                 reason: 'Interview slot booked',
               },

@@ -158,6 +158,7 @@ export interface Application {
   candidate: { id: string; fullName: string; email: string; mobileNumber: string };
   department: { id: string; name: string };
   assignedHr: { id: string; fullName: string; email: string } | null;
+  positionOwner: { id: string; fullName: string } | null;
   opportunity: {
     id: string;
     title: string;
@@ -167,6 +168,9 @@ export interface Application {
   interviewStatus: 'NOT_SCHEDULED' | 'SCHEDULED' | 'FEEDBACK_SUBMITTED';
   interviewDate: string | null;
   interviewTime: string | null;
+  // The slot's interviewer once scheduled, otherwise the assigned HR
+  // (position owner by default) as the interviewer-to-be. interviewDate/Time
+  // stay null until interviewStatus is 'SCHEDULED'.
   interviewer: { id: string; fullName: string } | null;
   resumeFile: { id: string; fileName: string; mimeType: string | null } | null;
   createdAt: string;

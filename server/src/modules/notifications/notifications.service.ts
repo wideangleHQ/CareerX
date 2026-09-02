@@ -31,6 +31,11 @@ interface HrEvent extends ApplicationEvent {
   hrId?: string | null;
 }
 
+interface InterviewReassignedEvent extends ApplicationEvent {
+  previousHrId: string | null;
+  newHrId: string;
+}
+
 export interface NotificationDto {
   id: string;
   applicationId: string | null;
@@ -78,6 +83,9 @@ export class NotificationsService implements OnModuleInit {
     });
     this.events.on('HRNoteCreated', (event: HrEvent) => {
       void this.handleHrNoteCreated(event);
+    });
+    this.events.on('InterviewReassigned', (event: InterviewReassignedEvent) => {
+      void this.handleInterviewReassigned(event);
     });
   }
 
@@ -215,6 +223,26 @@ export class NotificationsService implements OnModuleInit {
     ];
     if (recipients.length === 0) return;
     await this.enqueueMany(recipients, application.id, `${action} for ${application.application_code}`);
+  }
+
+  private async handleInterviewReassigned(event: InterviewReassignedEvent): Promise<void> {
+    const application = await this.repository.findApplicationContext(event.applicationId);
+    if (!application) return;
+
+    const code = application.application_code;
+
+    if (event.previousHrId) {
+      await this.enqueueMany(
+        [event.previousHrId],
+        application.id,
+        `Interview assignment removed for ${code}`,
+      );
+    }
+    await this.enqueueMany(
+      [event.newHrId],
+      application.id,
+      `Interview assigned for ${code}`,
+    );
   }
 
   private async enqueueMany(

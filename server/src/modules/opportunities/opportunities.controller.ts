@@ -2,6 +2,8 @@ import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query
 import { CareerJwtAuthGuard } from '../../common/guards/career-jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import type { CareerJwtPayload } from '../auth/interfaces/auth.interfaces';
 import { OpportunitiesService } from './opportunities.service';
 
 @Controller('opportunities')
@@ -11,8 +13,8 @@ export class OpportunitiesController {
   @Post()
   @UseGuards(CareerJwtAuthGuard, PermissionsGuard)
   @RequirePermissions('CAREER_EDIT')
-  create(@Body() body: any) {
-  return this.service.create(body);
+  create(@Body() body: any, @CurrentUser() user: CareerJwtPayload) {
+    return this.service.create(body, user);
   }
 
   @Get('public')

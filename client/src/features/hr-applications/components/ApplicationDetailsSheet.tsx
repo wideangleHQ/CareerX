@@ -11,6 +11,7 @@ import type { CandidateFile } from '@/src/api/types';
 import { formatSlotTime } from '@/src/lib/slot-time';
 import { useCandidateFiles, useFileAction } from '@/src/features/hr-candidates/hooks/useCandidateFiles';
 import { FilePreviewDialog } from '@/src/features/hr-candidates/components/FilePreviewDialog';
+import { InterviewerDropdown } from './InterviewerDropdown';
 
 interface ApplicationDetailsSheetProps {
   applicationId: string;
@@ -138,6 +139,13 @@ export function ApplicationDetailsSheet({ applicationId }: ApplicationDetailsShe
               </div>
 
               <div>
+                <p className="text-xs text-muted-foreground">Position Owner</p>
+                <p className="font-semibold text-black mt-0.5">
+                  {application.positionOwner?.fullName || 'Not set'}
+                </p>
+              </div>
+
+              <div>
                 <p className="text-xs text-muted-foreground">Assigned HR Employee</p>
                 <p className="font-semibold text-black mt-0.5">
                   {application.assignedHr?.fullName || 'Not assigned yet'}
@@ -155,21 +163,27 @@ export function ApplicationDetailsSheet({ applicationId }: ApplicationDetailsShe
                 <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                   <CalendarDays className="h-3.5 w-3.5" /> Interview Schedule
                 </p>
-                {application.interviewDate ? (
-                  <div className="mt-1.5 space-y-1">
-                    <p className="font-semibold text-black">
-                      {new Date(application.interviewDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                      {' '}at {formatSlotTime(application.interviewTime)}
-                    </p>
-                    {application.interviewer && (
-                      <p className="text-xs text-neutral-600">
-                        Interviewer: <span className="font-medium text-black">{application.interviewer.fullName}</span>
-                      </p>
+                <div className="mt-1.5 space-y-2">
+                  <p className="font-semibold text-black">
+                    {application.interviewDate
+                      ? <>{new Date(application.interviewDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} at {formatSlotTime(application.interviewTime)}</>
+                      : <span className="text-neutral-400 italic font-normal">Not Scheduled</span>}
+                  </p>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Interview Assigned To</p>
+                    {application.interviewer ? (
+                      <InterviewerDropdown
+                        applicationId={application.id}
+                        currentInterviewerId={application.interviewer.id}
+                        currentInterviewerName={application.interviewer.fullName}
+                        positionOwnerId={application.positionOwner?.id ?? null}
+                        hasScheduledSlot={application.interviewStatus === 'SCHEDULED'}
+                      />
+                    ) : (
+                      <span className="text-xs font-medium text-neutral-400 italic">Not Assigned</span>
                     )}
                   </div>
-                ) : (
-                  <p className="font-semibold text-neutral-400 mt-0.5 italic">Not Scheduled</p>
-                )}
+                </div>
               </div>
 
               {application.rejectionReason && (
